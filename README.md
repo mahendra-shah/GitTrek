@@ -1,6 +1,8 @@
 <div align="center">
 
-<img src="public/logo-light.svg" alt="GitTrek" width="90" height="90" />
+<!-- <img src="public/banner.svg" alt="GitTrek" /> -->
+![GitTrek](public/banner.svg)
+
 
 # GitTrek
 

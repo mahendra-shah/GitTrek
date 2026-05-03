@@ -238,7 +238,17 @@ export default function Home() {
           <div style={{ flex: 1 }} />
 
           {/* Rate limit */}
-          {rl?.remaining != null && (
+          {searchQuery.isLoading && !rl?.remaining ? (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: "var(--gt-header-rl-bg)", border: "1px solid var(--gt-header-rl-border)",
+              borderRadius: 20, padding: "4px 12px", height: 26, width: 140,
+              animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            }}>
+              <div style={{ width: 40, height: 12, background: "var(--gt-border)", borderRadius: 4 }}></div>
+              <div style={{ width: 50, height: 12, background: "var(--gt-border)", borderRadius: 4 }}></div>
+            </div>
+          ) : rl?.remaining != null ? (
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               background: "var(--gt-header-rl-bg)", border: "1px solid var(--gt-header-rl-border)",
@@ -257,7 +267,7 @@ export default function Home() {
                 </>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* User */}
           {sessionQuery.data ? (
