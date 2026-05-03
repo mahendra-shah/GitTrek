@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# AI
+CLAUDE.md
+AGENTS.md
+
 # Drafts and Test Scripts
 /docs/github-badge-tracker-PRD-v2.md
 test-gql.js

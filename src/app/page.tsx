@@ -199,8 +199,10 @@ export default function Home() {
         borderBottom: "1px solid var(--gt-header-border)",
         backdropFilter: "blur(8px)",
       }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px",
-          height: 60, display: "flex", alignItems: "center", gap: 32 }}>
+        <div style={{
+          maxWidth: 1280, margin: "0 auto", padding: "0 24px",
+          height: 60, display: "flex", alignItems: "center", gap: 32
+        }}>
 
           {/* Logo + name */}
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
@@ -209,15 +211,15 @@ export default function Home() {
               GitTrek
             </h1>
           </div>
-          
+
           {/* AEO/GEO Hidden Context Block */}
           <section className="sr-only">
             <h2>What is GitTrek?</h2>
             <p>
-              GitTrek is a developer search engine and open source contribution tool. 
-              It helps developers find beginner-friendly GitHub issues ("good first issue"), 
-              track their pull request (PR) badges, and evaluate repository health. 
-              GitTrek prevents developers from wasting time on crowded issues by checking 
+              GitTrek is a developer search engine and open source contribution tool.
+              It helps developers find beginner-friendly GitHub issues ("good first issue"),
+              track their pull request (PR) badges, and evaluate repository health.
+              GitTrek prevents developers from wasting time on crowded issues by checking
               live PR competition before they start coding.
             </p>
           </section>
@@ -301,8 +303,10 @@ export default function Home() {
               )}
               <button
                 onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); }}
-                style={{ background: "none", border: "none", cursor: "pointer",
-                  color: "var(--gt-header-nav-inactive)", fontSize: 13, padding: 0 }}
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  color: "var(--gt-header-nav-inactive)", fontSize: 13, padding: 0
+                }}
               >
                 Sign out
               </button>
@@ -340,15 +344,17 @@ export default function Home() {
             borderRadius: 10, padding: "12px 20px", marginBottom: 28, textAlign: "center",
             fontSize: 13, color: "var(--gt-warn-text)",
           }}>
-            Browsing as guest · Rate limits apply · PR checks disabled ·{" "}
+            Guests get basic search. ·{" "}
             <button
               onClick={() => { window.location.href = "/api/auth/login"; }}
-              style={{ background: "none", border: "none", cursor: "pointer",
-                color: "var(--gt-primary)", fontWeight: 700, textDecoration: "underline", padding: 0 }}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--gt-primary)", fontWeight: 700, textDecoration: "underline", padding: 0
+              }}
             >
               Sign in with GitHub
             </button>
-            {" "}to unlock full features
+            {" "}to unlock deep Repository Quality Gates (Stars, Forks, Activity).
           </div>
         )}
 
@@ -466,24 +472,24 @@ export default function Home() {
                         <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gt-text-muted)" }}>
                           Join <strong style={{ color: "var(--gt-primary)" }}>2,400+ developers</strong> on the waitlist.
                         </p>
-                        <form 
+                        <form
                           onSubmit={handleWaitlistSubmit}
                           style={{ display: "flex", gap: 10, maxWidth: 400, margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}
                         >
-                          <input 
-                            type="email" 
-                            placeholder="Enter your email" 
+                          <input
+                            type="email"
+                            placeholder="Enter your email"
                             required
                             value={waitlistEmail}
                             onChange={e => setWaitlistEmail(e.target.value)}
                             disabled={waitlistLoading}
-                            style={{ 
-                              flex: "1 1 240px", padding: "10px 14px", borderRadius: 8, 
+                            style={{
+                              flex: "1 1 240px", padding: "10px 14px", borderRadius: 8,
                               border: "1px solid var(--gt-border)", background: "var(--gt-bg)",
                               color: "var(--gt-text)", fontSize: 14, outline: "none",
                               opacity: waitlistLoading ? 0.6 : 1,
                               minWidth: 0
-                            }} 
+                            }}
                           />
                           <button
                             type="submit"
@@ -513,161 +519,161 @@ export default function Home() {
 
         {/* ── FIND ISSUES TAB ── */}
         {activeTab === "issues" && (
-        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32 }}>
-          {/* Sidebar */}
-          <aside>
-            <div style={{
-              position: "sticky", top: 80,
-              background: "var(--gt-sidebar)", border: "1px solid var(--gt-border)",
-              borderRadius: 16, padding: 24,
-              boxShadow: "var(--gt-shadow)",
-              maxHeight: "calc(100vh - 100px)", overflowY: "auto"
-            }}>
-              <FilterPanel
-                draft={draft}
-                setDraft={setDraft}
-                hideLinkedPRs={hideLinkedPRs}
-                setHideLinkedPRs={setHideLinkedPRs}
-                isGuest={isGuest}
-                onSubmit={handleSubmit}
-                isSearching={searchQuery.isFetching}
-              />
-            </div>
-          </aside>
-
-          {/* Results */}
-          <section>
-            {/* Results header */}
-            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-              {/* Search within results */}
-              <form 
-                onSubmit={handleSubmit}
-                style={{
-                  flex: 1, minWidth: 200,
-                  display: "flex", alignItems: "center", gap: 10,
-                  background: "var(--gt-card)", border: "1px solid var(--gt-border)",
-                  borderRadius: 10, padding: "8px 14px",
-                  boxShadow: "var(--gt-shadow)",
-                }}
-              >
-                <Search size={15} style={{ color: "var(--gt-text-subtle)", flexShrink: 0 }} />
-                <input
-                  type="text"
-                  placeholder="Search keywords..."
-                  value={draft.text}
-                  onChange={e => setDraft(p => ({ ...p, text: e.target.value }))}
-                  style={{
-                    flex: 1, background: "none", border: "none", outline: "none",
-                    fontSize: 14, color: "var(--gt-text)",
-                  }}
+          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32 }}>
+            {/* Sidebar */}
+            <aside>
+              <div style={{
+                position: "sticky", top: 80,
+                background: "var(--gt-sidebar)", border: "1px solid var(--gt-border)",
+                borderRadius: 16, padding: 24,
+                boxShadow: "var(--gt-shadow)",
+                maxHeight: "calc(100vh - 100px)", overflowY: "auto"
+              }}>
+                <FilterPanel
+                  draft={draft}
+                  setDraft={setDraft}
+                  hideLinkedPRs={hideLinkedPRs}
+                  setHideLinkedPRs={setHideLinkedPRs}
+                  isGuest={isGuest}
+                  onSubmit={handleSubmit}
+                  isSearching={searchQuery.isFetching}
                 />
-              </form>
-            </div>
-
-            {/* Sort pills + count row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-              <div style={{ display: "flex", gap: 6 }}>
-                {([
-                  { val: "created", label: "Newest" },
-                  { val: "comments", label: "Most comments" },
-                  { val: "stars", label: "Most stars" },
-                  { val: "updated", label: "Updated" },
-                ] as const).map(({ val, label }) => (
-                  <button
-                    key={val}
-                    onClick={() => { setSort(val); }}
-                    style={{
-                      padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                      border: "1px solid",
-                      background: sort === val ? "var(--gt-primary)" : "transparent",
-                      borderColor: sort === val ? "var(--gt-primary)" : "var(--gt-border)",
-                      color: sort === val ? "#fff" : "var(--gt-text-muted)",
-                      cursor: "pointer", transition: "all 0.15s",
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
               </div>
-              <button
-                onClick={() => { const o = order === "desc" ? "asc" : "desc"; setOrder(o); }}
-                style={{
-                  padding: "5px 10px", borderRadius: 20, fontSize: 13,
-                  border: "1px solid var(--gt-border)", background: "transparent",
-                  color: "var(--gt-text-muted)", cursor: "pointer",
-                }}
-              >
-                {order === "desc" ? "↓ Desc" : "↑ Asc"}
-              </button>
-              <div style={{ flex: 1 }} />
-              <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
-                {searchQuery.isFetching ? (
-                  <span style={{ color: "var(--gt-primary)" }}>Loading via GraphQL…</span>
-                ) : searchQuery.data ? (
-                  `${searchQuery.data.total_count.toLocaleString()} issues found`
-                  + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
-                ) : "Run a search"}
-              </span>
-            </div>
+            </aside>
 
-            {/* Error */}
-            {searchQuery.isError && (
-              <div style={{
-                background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)",
-                borderRadius: 10, padding: "12px 16px", marginBottom: 16,
-                color: "var(--gt-danger-text)", fontSize: 13,
-              }}>
-                Search failed. Rate limit may have been hit — wait a minute and try again.
-              </div>
-            )}
-
-            {/* Empty state */}
-            {!searchQuery.isFetching && searchQuery.data && displayedIssues.length === 0 && (
-              <div style={{
-                border: "2px dashed var(--gt-border)", borderRadius: 12,
-                padding: "64px 24px", textAlign: "center",
-                color: "var(--gt-text-subtle)", fontSize: 15,
-              }}>
-                No issues match these filters. Try relaxing the criteria.
-              </div>
-            )}
-
-            {/* Cards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {searchQuery.isFetching ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div key={`skel-${i}`} style={{
+            {/* Results */}
+            <section>
+              {/* Results header */}
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
+                {/* Search within results */}
+                <form
+                  onSubmit={handleSubmit}
+                  style={{
+                    flex: 1, minWidth: 200,
+                    display: "flex", alignItems: "center", gap: 10,
                     background: "var(--gt-card)", border: "1px solid var(--gt-border)",
-                    borderRadius: 12, padding: "24px 20px", height: 140,
-                    animation: "gt-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                    display: "flex", flexDirection: "column", gap: 16
-                  }}>
-                    <div style={{ display: "flex", gap: 12 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 8, background: "var(--gt-border)" }} />
-                      <div style={{ width: "60%", height: 16, borderRadius: 4, background: "var(--gt-border)" }} />
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <div style={{ width: 60, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
-                      <div style={{ width: 80, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
-                    </div>
-                  </div>
-                ))
-              ) : displayedIssues.length > 0 ? (
-                displayedIssues.map(issue => (
-                  <IssueCard key={issue.id} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
-                ))
-              ) : null}
-            </div>
+                    borderRadius: 10, padding: "8px 14px",
+                    boxShadow: "var(--gt-shadow)",
+                  }}
+                >
+                  <Search size={15} style={{ color: "var(--gt-text-subtle)", flexShrink: 0 }} />
+                  <input
+                    type="text"
+                    placeholder="Search keywords..."
+                    value={draft.text}
+                    onChange={e => setDraft(p => ({ ...p, text: e.target.value }))}
+                    style={{
+                      flex: 1, background: "none", border: "none", outline: "none",
+                      fontSize: 14, color: "var(--gt-text)",
+                    }}
+                  />
+                </form>
+              </div>
 
-            {/* Pagination */}
-            <Pagination 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
-              onPageChange={handlePageChange} 
-              maxAllowedPage={isGuest ? totalPages : Math.max(cursorHistory.length, currentPage + (searchQuery.data?.endCursor ? 1 : 0))}
-            />
-          </section>
-        </div>
+              {/* Sort pills + count row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {([
+                    { val: "created", label: "Newest" },
+                    { val: "comments", label: "Most comments" },
+                    { val: "stars", label: "Most stars" },
+                    { val: "updated", label: "Updated" },
+                  ] as const).map(({ val, label }) => (
+                    <button
+                      key={val}
+                      onClick={() => { setSort(val); }}
+                      style={{
+                        padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                        border: "1px solid",
+                        background: sort === val ? "var(--gt-primary)" : "transparent",
+                        borderColor: sort === val ? "var(--gt-primary)" : "var(--gt-border)",
+                        color: sort === val ? "#fff" : "var(--gt-text-muted)",
+                        cursor: "pointer", transition: "all 0.15s",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => { const o = order === "desc" ? "asc" : "desc"; setOrder(o); }}
+                  style={{
+                    padding: "5px 10px", borderRadius: 20, fontSize: 13,
+                    border: "1px solid var(--gt-border)", background: "transparent",
+                    color: "var(--gt-text-muted)", cursor: "pointer",
+                  }}
+                >
+                  {order === "desc" ? "↓ Desc" : "↑ Asc"}
+                </button>
+                <div style={{ flex: 1 }} />
+                <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
+                  {searchQuery.isFetching ? (
+                    <span style={{ color: "var(--gt-primary)" }}>Loading via GraphQL…</span>
+                  ) : searchQuery.data ? (
+                    `${searchQuery.data.total_count.toLocaleString()} issues found`
+                    + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
+                  ) : "Run a search"}
+                </span>
+              </div>
+
+              {/* Error */}
+              {searchQuery.isError && (
+                <div style={{
+                  background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)",
+                  borderRadius: 10, padding: "12px 16px", marginBottom: 16,
+                  color: "var(--gt-danger-text)", fontSize: 13,
+                }}>
+                  Search failed. Rate limit may have been hit — wait a minute and try again.
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!searchQuery.isFetching && searchQuery.data && displayedIssues.length === 0 && (
+                <div style={{
+                  border: "2px dashed var(--gt-border)", borderRadius: 12,
+                  padding: "64px 24px", textAlign: "center",
+                  color: "var(--gt-text-subtle)", fontSize: 15,
+                }}>
+                  No issues match these filters. Try relaxing the criteria.
+                </div>
+              )}
+
+              {/* Cards */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {searchQuery.isFetching ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={`skel-${i}`} style={{
+                      background: "var(--gt-card)", border: "1px solid var(--gt-border)",
+                      borderRadius: 12, padding: "24px 20px", height: 140,
+                      animation: "gt-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+                      display: "flex", flexDirection: "column", gap: 16
+                    }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <div style={{ width: 16, height: 16, borderRadius: 8, background: "var(--gt-border)" }} />
+                        <div style={{ width: "60%", height: 16, borderRadius: 4, background: "var(--gt-border)" }} />
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <div style={{ width: 60, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
+                        <div style={{ width: 80, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
+                      </div>
+                    </div>
+                  ))
+                ) : displayedIssues.length > 0 ? (
+                  displayedIssues.map(issue => (
+                    <IssueCard key={issue.id} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
+                  ))
+                ) : null}
+              </div>
+
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                maxAllowedPage={isGuest ? totalPages : Math.max(cursorHistory.length, currentPage + (searchQuery.data?.endCursor ? 1 : 0))}
+              />
+            </section>
+          </div>
         )}
       </main>
     </div>
