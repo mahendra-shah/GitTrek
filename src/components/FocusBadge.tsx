@@ -1,6 +1,6 @@
 "use client";
 
-import { type BadgeResult } from "@/lib/github/badges";
+import { type BadgeResult, LOOP_URLS } from "@/lib/github/badges";
 import { useRouter } from "next/navigation";
 
 type Props = {
@@ -14,9 +14,7 @@ export function FocusBadge({ focusBadge, username }: Props) {
   const nextTierLabel = tierResult.tier < 4 ? ["Bronze", "Silver", "Gold", "Platinum"][tierResult.tier] : "";
 
   const isDiscussion = focusBadge.key === "galaxyBrain";
-  const loopUrl = isDiscussion
-    ? "/?discussions=true"
-    : "/?labels=good+first+issue&noAssignee=true";
+  const loopUrl = LOOP_URLS[focusBadge.key] || "/";
 
   return (
     <div
@@ -56,8 +54,14 @@ export function FocusBadge({ focusBadge, username }: Props) {
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gt-primary)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
             Focus — Closest to next tier
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.3 }}>
-            {config.emoji} {config.label}
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.3, display: "flex", alignItems: "center", gap: 6 }}>
+            {config.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={config.image} alt="" width={22} height={22} />
+            ) : (
+              config.emoji
+            )}
+            {config.label}
           </div>
           <div style={{ fontSize: 13, color: "var(--gt-text-muted)", marginTop: 3 }}>
             {tierResult.tier === 0

@@ -3,6 +3,7 @@ import { Space_Grotesk } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
 
 import Providers from "./providers";
+import { Header } from "@/components/Header";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -100,7 +101,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full">
-        <Providers>{children}</Providers>
+        <Providers>
+          <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column" }}>
+            <Header />
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );

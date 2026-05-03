@@ -3,13 +3,12 @@
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 
 import { IssueCard, IssueItem } from "@/components/IssueCard";
 import { FilterPanel, FilterDraft } from "@/components/FilterPanel";
 import { Pagination } from "@/components/Pagination";
-import { Header } from "@/components/Header";
 
 type SearchResponse = {
   total_count: number;
@@ -55,6 +54,14 @@ function HomeContent() {
   const isGuest = !sessionQuery.isLoading && sessionQuery.data === null;
 
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Clear URL parameters immediately after initial hydration
+    // so they don't stay in the browser URL bar (User request)
+    if (searchParams && searchParams.toString().length > 0) {
+      window.history.replaceState(null, "", "/");
+    }
+  }, [searchParams]);
 
   // Parse initial state from URL if present (supports "The Loop" CTAs)
   const [draft, setDraft] = useState<FilterDraft>(() => {
@@ -106,7 +113,23 @@ function HomeContent() {
     placeholderData: keepPreviousData,
   });
 
-  // Rate limit countdown
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    // Sync the local search API rate limit up to the global cache for the Header to display
+    const rl = searchQuery.data?.rate_limit;
+    if (rl && rl.limit) {
+      queryClient.setQueryData(["rateLimit"], (old: any) => ({
+        ...old,
+        resources: {
+          ...old?.resources,
+          search: rl,
+        },
+      }));
+    }
+  }, [searchQuery.data?.rate_limit, queryClient]);
+
+  // Rate limit countdown (legacy cleanup)
   const [countdown, setCountdown] = useState<number | null>(null);
 
   // Waitlist state
@@ -135,17 +158,6 @@ function HomeContent() {
     }
   };
 
-  useEffect(() => {
-    const resetTs = searchQuery.data?.rate_limit?.reset;
-    if (!resetTs) return;
-    const tick = () => {
-      const s = Math.max(0, Math.round(resetTs - Date.now() / 1000));
-      setCountdown(s);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [searchQuery.data?.rate_limit?.reset]);
   // Auto-submit search when keywords change (debounced)
   useEffect(() => {
     if (draft.text === applied.text) return;
@@ -201,10 +213,7 @@ function HomeContent() {
   const rl = searchQuery.data?.rate_limit;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column" }}>
-      {/* ── HEADER ── */}
-      <Header />
-
+    <>
       {/* ── SUBHEADER SLOGAN ── */}
       <div style={{
         background: "var(--gt-card)", borderBottom: "1px solid var(--gt-border)",
@@ -397,7 +406,7 @@ function HomeContent() {
           </div>
         )}
       </main>
-    </div>
+    </>
   );
 }
 

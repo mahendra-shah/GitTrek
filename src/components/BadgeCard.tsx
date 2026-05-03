@@ -67,9 +67,14 @@ export function BadgeCard({ badge, loopUrl }: Props) {
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 28 }} role="img" aria-label={config.label}>
-            {config.emoji}
-          </span>
+          {config.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={config.image} alt={config.label} width={42} height={42} style={{ flexShrink: 0, filter: isNotTrackable ? "grayscale(100%)" : "none" }} />
+          ) : (
+            <span style={{ fontSize: 28 }} role="img" aria-label={config.label}>
+              {config.emoji}
+            </span>
+          )}
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.2 }}>
               {config.label}

@@ -7,6 +7,7 @@ import {
   BADGE_CONFIG,
   type BadgeResult,
   type BadgeKey,
+  LOOP_URLS,
 } from "@/lib/github/badges";
 import { BadgeCard, BadgeCardSkeleton } from "@/components/BadgeCard";
 import { FocusBadge } from "@/components/FocusBadge";
@@ -16,30 +17,27 @@ type Props = {
   isOwnProfile: boolean;
 };
 
-// ── Loop pre-fill URLs ───────────────────────────────────────────────────────
-const LOOP_URLS: Partial<Record<BadgeKey, string>> = {
-  pullShark: "/?labels=good+first+issue&noAssignee=true&zeroComments=true&hideLinkedPRs=true",
-  galaxyBrain: "/?discussions=true&zeroComments=true",
-  yolo: "/?labels=bug&noAssignee=true&hideLinkedPRs=true",
-  starstruck: "/?minStars=1000",
-};
+
 
 // ── Client Component with Local Storage Caching ──────────────────────────────
 export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const cacheKey = `gittrek-badges-${username}`;
 
-  const [results, setResults] = useState<BadgeResult[] | null>(() => {
+  const [results, setResults] = useState<BadgeResult[] | null>(null);
+
+  useEffect(() => {
     // 1. Immediately try to load from local storage if it's the logged-in user
-    if (typeof window !== "undefined" && isOwnProfile) {
+    if (isOwnProfile && !results) {
       try {
         const cached = localStorage.getItem(cacheKey);
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          setResults(JSON.parse(cached));
+        }
       } catch {
         // ignore parse errors
       }
     }
-    return null;
-  });
+  }, [cacheKey, isOwnProfile]); // Run once to paint cache
 
   useEffect(() => {
     let active = true;

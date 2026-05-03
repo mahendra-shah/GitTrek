@@ -29,6 +29,8 @@ export type BadgeConfigEntry = {
   label: string;
   /** Short emoji for the badge. */
   emoji: string;
+  /** Actual GitHub badge image URL */
+  image?: string;
   /** Why this calculation might be inaccurate (shown in the "What breaks this?" section). */
   caveat: string;
 };
@@ -40,6 +42,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: false,
     label: "Pull Shark",
     emoji: "🦈",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/pull-shark-default.png",
     caveat: "Only counts public merged PRs. Private repository contributions are not visible to the API.",
   },
   starstruck: {
@@ -48,6 +51,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: false,
     label: "Starstruck",
     emoji: "🌟",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/starstruck-default.png",
     caveat: "Awarded per repository, not total stars. This tool checks your highest-starred public repo only. Private repo stars are not counted.",
   },
   pairExtraordinaire: {
@@ -56,6 +60,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: true,
     label: "Pair Extraordinaire",
     emoji: "👥",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/pair-extraordinaire-default.png",
     caveat: "Only counts PRs with 'Co-authored-by:' in the commit message. Alternative co-authoring formats may cause false negatives.",
   },
   galaxyBrain: {
@@ -64,6 +69,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: false,
     label: "Galaxy Brain",
     emoji: "🧠",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/galaxy-brain-default.png",
     caveat: "Only counts accepted answers in public GitHub Discussions. Private repository discussions are not accessible.",
   },
   yolo: {
@@ -72,6 +78,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: true,
     label: "YOLO",
     emoji: "🤞",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/yolo-default.png",
     caveat: "GitHub's exact criteria for 'merged without review' is not publicly documented. This is an estimate based on PRs with no review events.",
   },
   quickdraw: {
@@ -80,6 +87,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: false,
     label: "Quickdraw",
     emoji: "⚡",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/quickdraw-default.png",
     caveat: "Cannot be tracked via the GitHub API. Requires scanning timestamps of all PRs and issues, which exceeds practical API rate limits.",
   },
   publicSponsor: {
@@ -88,6 +96,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     estimated: false,
     label: "Public Sponsor",
     emoji: "💖",
+    image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/public-sponsor-default.png",
     caveat: "Only detects public sponsorships. Private sponsorships are not visible.",
   },
 } as const;
@@ -95,6 +104,14 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
 // Tier names by index (0 = not earned, 1-4 = tier levels)
 export const TIER_LABELS = ["Not earned", "Bronze", "Silver", "Gold", "Platinum"] as const;
 export type TierLabel = (typeof TIER_LABELS)[number];
+
+// ── Loop pre-fill URLs ───────────────────────────────────────────────────────
+export const LOOP_URLS: Partial<Record<BadgeKey, string>> = {
+  pullShark: "/?labels=good+first+issue&noAssignee=true&zeroComments=true&hideLinkedPRs=true",
+  galaxyBrain: "/?discussions=true&zeroComments=true",
+  yolo: "/?labels=bug&noAssignee=true&hideLinkedPRs=true",
+  starstruck: "/?minStars=1000",
+};
 
 // ── Core Calculation ──────────────────────────────────────────────────────────
 
@@ -188,11 +205,13 @@ export type ShareableCardData = {
     key: BadgeKey;
     label: string;
     emoji: string;
+    image?: string;
     tierLabel: TierLabel;
   }>;
   focusBadge: {
     label: string;
     emoji: string;
+    image?: string;
     needed: number;
     nextTierLabel: TierLabel;
   } | null;
@@ -209,6 +228,7 @@ export function buildShareableCardData(
       key: r.key,
       label: r.config.label,
       emoji: r.config.emoji,
+      image: r.config.image,
       tierLabel: r.tierResult.tierLabel,
     }));
 
@@ -217,6 +237,7 @@ export function buildShareableCardData(
     ? {
         label: focus.config.label,
         emoji: focus.config.emoji,
+        image: focus.config.image,
         needed: focus.tierResult.needed,
         nextTierLabel: TIER_LABELS[focus.tierResult.tier + 1] as TierLabel,
       }

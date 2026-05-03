@@ -116,7 +116,14 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
                   padding: "8px 14px",
                 }}
               >
-                <span style={{ fontSize: 18 }}>{b.emoji}</span>
+                <span style={{ fontSize: 18, display: "flex" }}>
+                  {b.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={b.image} alt="" width={24} height={24} crossOrigin="anonymous" />
+                  ) : (
+                    b.emoji
+                  )}
+                </span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "#E6EDF3" }}>{b.label}</span>
                 <span
                   style={{
@@ -153,7 +160,14 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
             position: "relative",
           }}
         >
-          <span style={{ fontSize: 20 }}>🎯</span>
+          <span style={{ fontSize: 20, display: "flex" }}>
+            {focusBadge.image ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={focusBadge.image} alt="" width={28} height={28} crossOrigin="anonymous" />
+            ) : (
+              "🎯"
+            )}
+          </span>
           <div>
             <div style={{ fontSize: 12, color: "#F97316", fontWeight: 700, marginBottom: 2 }}>
               Working toward {focusBadge.nextTierLabel}

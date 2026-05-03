@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 
 import { BadgeDashboard } from "@/components/BadgeDashboard";
 import { UserLookup } from "@/components/UserLookup";
-import { Header } from "@/components/Header";
 import { getToken } from "@/lib/auth/adapter";
 
 export const dynamic = "force-dynamic";
@@ -53,8 +52,7 @@ export default async function BadgesPage({ searchParams }: PageProps) {
   const isOwnProfile = targetUsername === signedInUser;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column" }}>
-      <Header />
+    <>
       <main
       style={{
         maxWidth: 820,
@@ -134,6 +132,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         <BadgeDashboard username={targetUsername} isOwnProfile={isOwnProfile} />
       )}
     </main>
-    </div>
+    </>
   );
 }

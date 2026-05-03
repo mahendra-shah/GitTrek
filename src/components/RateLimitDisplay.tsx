@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 export function RateLimitDisplay() {
@@ -10,10 +11,25 @@ export function RateLimitDisplay() {
       if (!res.ok) return null;
       return res.json();
     },
-    refetchInterval: 30000, // refresh every 30s
+    staleTime: Infinity, // Never poll; we update this cache manually when API calls return
   });
 
-  const rl = data?.resources?.core;
+  const rl = data?.resources?.search;
+
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!rl?.reset) return;
+
+    const tick = () => {
+      const s = Math.max(0, Math.round(rl.reset - Date.now() / 1000));
+      setTimeLeft(s);
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [rl?.reset]);
 
   if (isLoading && !rl) {
     return (
@@ -31,6 +47,12 @@ export function RateLimitDisplay() {
 
   if (!rl) return null;
 
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 8,
@@ -40,7 +62,12 @@ export function RateLimitDisplay() {
       <span style={{ color: "var(--gt-primary)", fontWeight: 700 }}>
         {rl.remaining}/{rl.limit}
       </span>
-      <span style={{ color: "var(--gt-header-rl-text)" }} title="Core API Requests Remaining">requests</span>
+      <span style={{ color: "var(--gt-header-rl-text)" }} title="Search API Requests Remaining">requests</span>
+      {timeLeft !== null && rl.remaining < rl.limit && timeLeft > 0 && (
+        <span style={{ color: "var(--gt-text-subtle)", fontFamily: "monospace", marginLeft: 2 }} title="Resets in">
+          ({formatTime(timeLeft)})
+        </span>
+      )}
     </div>
   );
 }
