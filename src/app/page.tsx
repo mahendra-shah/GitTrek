@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
@@ -40,7 +40,7 @@ const DEFAULT: FilterDraft = {
   onlyOrgs: false,
 };
 
-export default function Home() {
+function HomeContent() {
   // Session
   const sessionQuery = useQuery<SessionUser | null>({
     queryKey: ["session"],
@@ -398,5 +398,13 @@ export default function Home() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "var(--gt-bg)" }} />}>
+      <HomeContent />
+    </Suspense>
   );
 }
