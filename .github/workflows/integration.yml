@@ -1,0 +1,29 @@
+name: GitHub API Integration Check
+
+on:
+  schedule:
+    # Run at 00:00 UTC every day
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run GitHub API Integration Test
+        run: npm test -- tests/integration
+        env:
+          # Use your custom secret if provided, otherwise fallback to the default runner token
+          GITHUB_TOKEN: ${{ secrets.GH_SECRET_TOKEN || secrets.GITHUB_TOKEN }}

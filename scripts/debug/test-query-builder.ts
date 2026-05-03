@@ -1,0 +1,41 @@
+import { buildIssueSearchQuery } from "./src/lib/github/search.ts";
+
+const testFilters1 = {
+  text: "",
+  languages: ["Python"],
+  labels: ["good first issue"],
+  zeroComments: true,
+  noAssignee: true,
+  issueAgeDays: 13, // To simulate created:>2026-04-20 (today is May 3, 2026, so ~13 days ago)
+  minStars: null,
+  maxStars: null,
+  minForks: null,
+  maxForks: null,
+  repoPushedDays: null,
+  hasContributing: false,
+  org: "",
+  onlyOrgs: false,
+};
+
+console.log("TEST 1: Python, Good First Issue, Zero Comments, No Assignee");
+console.log(buildIssueSearchQuery(testFilters1));
+
+const testFilters2 = {
+  text: "machine learning",
+  languages: [],
+  labels: ["help wanted"],
+  zeroComments: false,
+  noAssignee: true,
+  issueAgeDays: 30,
+  minStars: 100,
+  maxStars: null,
+  minForks: 50,
+  maxForks: null,
+  repoPushedDays: 90,
+  hasContributing: true,
+  org: "vercel",
+  onlyOrgs: false,
+};
+
+console.log("\nTEST 2: Complex Query with Text, Org, Quality Gates");
+console.log(buildIssueSearchQuery(testFilters2));
