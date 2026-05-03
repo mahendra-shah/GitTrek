@@ -205,10 +205,22 @@ export default function Home() {
           {/* Logo + name */}
           <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
             <img src="/logo-light.svg" alt="GitTrek" style={{ height: 42, width: 42, borderRadius: 10 }} />
-            <span style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>
+            <h1 style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em", margin: 0 }}>
               GitTrek
-            </span>
+            </h1>
           </div>
+          
+          {/* AEO/GEO Hidden Context Block */}
+          <section className="sr-only">
+            <h2>What is GitTrek?</h2>
+            <p>
+              GitTrek is a developer search engine and open source contribution tool. 
+              It helps developers find beginner-friendly GitHub issues ("good first issue"), 
+              track their pull request (PR) badges, and evaluate repository health. 
+              GitTrek prevents developers from wasting time on crowded issues by checking 
+              live PR competition before they start coding.
+            </p>
+          </section>
 
           {/* Nav */}
           <nav style={{ display: "flex", gap: 4 }}>
