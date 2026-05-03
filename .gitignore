@@ -42,5 +42,5 @@ next-env.d.ts
 
 # Drafts and Test Scripts
 /docs/github-badge-tracker-PRD-v2.md
-/test-gql.js
-/test-search.js
+test-gql.js
+test-search.js
