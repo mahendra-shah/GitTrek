@@ -25,6 +25,5 @@ jobs:
       - name: Run GitHub API Integration Test
         run: npm test -- tests/integration
         env:
-          # We don't strictly need a token for public search, 
-          # but having one prevents rate limiting in CI.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use your custom secret if provided, otherwise fallback to the default runner token
+          GITHUB_TOKEN: ${{ secrets.GH_SECRET_TOKEN || secrets.GITHUB_TOKEN }}
