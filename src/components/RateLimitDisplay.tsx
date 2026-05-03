@@ -14,7 +14,7 @@ export function RateLimitDisplay() {
     staleTime: Infinity, // Never poll; we update this cache manually when API calls return
   });
 
-  const rl = data?.resources?.search;
+  const rl = data?.activeSearchLimit || data?.resources?.search;
 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 

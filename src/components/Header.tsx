@@ -28,7 +28,8 @@ export function Header({ children }: { children?: React.ReactNode }) {
       position: "sticky", top: 0, zIndex: 40,
       background: "var(--gt-header-bg)",
       borderBottom: "1px solid var(--gt-header-border)",
-      backdropFilter: "blur(8px)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
     }}>
       <div style={{
         maxWidth: 1280, margin: "0 auto", padding: "0 24px",

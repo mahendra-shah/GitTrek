@@ -102,7 +102,21 @@ export default function RootLayout({
       </head>
       <body className="min-h-full">
         <Providers>
-          <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column" }}>
+          <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
+            {/* Ambient Background Glow (Foggy Glass Lighting) */}
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "100%",
+              maxWidth: "1000px",
+              height: "500px",
+              background: "radial-gradient(ellipse at top, rgba(249, 115, 22, 0.12) 0%, rgba(249, 115, 22, 0) 70%)",
+              pointerEvents: "none",
+              zIndex: 0,
+            }} />
+            
             <Header />
             {children}
           </div>

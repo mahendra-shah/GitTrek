@@ -21,8 +21,7 @@
   --gt-shadow:        0 1px 0 rgba(27,31,36,0.04), 0 4px 12px rgba(27,31,36,0.06);
   --gt-shadow-hover:  0 2px 4px rgba(27,31,36,0.08), 0 8px 24px rgba(27,31,36,0.10);
 
-  /* Header — LIGHT in light mode */
-  --gt-header-bg:           #FFFFFF;
+  --gt-header-bg:           rgba(255, 255, 255, 0.75);
   --gt-header-border:       #D0D7DE;
   --gt-header-text:         #1A1A2E;
   --gt-header-nav-active:   var(--gt-primary);
@@ -65,8 +64,7 @@
     --gt-shadow:        0 1px 3px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.22);
     --gt-shadow-hover:  0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
 
-    /* Header — DARK in dark mode */
-    --gt-header-bg:           #0D1117;
+    --gt-header-bg:           rgba(13, 17, 23, 0.70);
     --gt-header-border:       rgba(48, 54, 61, 1);
     --gt-header-text:         #E6EDF3;
     --gt-header-nav-inactive: rgba(230, 237, 243, 0.50);

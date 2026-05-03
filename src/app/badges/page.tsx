@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
-
 import { BadgeDashboard } from "@/components/BadgeDashboard";
 import { UserLookup } from "@/components/UserLookup";
 import { getToken } from "@/lib/auth/adapter";

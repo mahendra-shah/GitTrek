@@ -16,11 +16,12 @@ export function NavTabs() {
       aria-label="Main navigation"
       style={{
         display: "flex",
-        gap: 4,
+        gap: 6,
         padding: "4px",
-        background: "var(--gt-header-rl-bg)",
-        border: "1px solid var(--gt-header-rl-border)",
-        borderRadius: 10,
+        background: "rgba(0, 0, 0, 0.03)",
+        border: "1px solid rgba(255, 255, 255, 0.05)",
+        borderRadius: 12,
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
       {tabs.map(({ href, label }) => {
@@ -30,16 +31,17 @@ export function NavTabs() {
             key={href}
             href={href}
             style={{
-              padding: "6px 14px",
-              borderRadius: 7,
+              padding: "6px 16px",
+              borderRadius: 8,
               fontSize: 13,
               fontWeight: isActive ? 700 : 500,
-              color: isActive ? "var(--gt-header-text)" : "var(--gt-header-nav-inactive)",
-              background: isActive ? "var(--gt-header-bg)" : "transparent",
-              boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+              color: isActive ? "var(--gt-text)" : "var(--gt-text-muted)",
+              background: isActive ? "var(--gt-card)" : "transparent",
+              boxShadow: isActive ? "0 1px 4px rgba(0,0,0,0.1), 0 0 0 1px var(--gt-border)" : "none",
               textDecoration: "none",
-              transition: "background 0.15s, color 0.15s",
+              transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               whiteSpace: "nowrap",
+              position: "relative",
             }}
             aria-current={isActive ? "page" : undefined}
           >

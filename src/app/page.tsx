@@ -51,7 +51,10 @@ function HomeContent() {
     },
     staleTime: 1000 * 60 * 5,
   });
-  const isGuest = !sessionQuery.isLoading && sessionQuery.data === null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const isGuest = mounted && !sessionQuery.isLoading && sessionQuery.data === null;
 
   const searchParams = useSearchParams();
 
@@ -121,42 +124,10 @@ function HomeContent() {
     if (rl && rl.limit) {
       queryClient.setQueryData(["rateLimit"], (old: any) => ({
         ...old,
-        resources: {
-          ...old?.resources,
-          search: rl,
-        },
+        activeSearchLimit: rl,
       }));
     }
   }, [searchQuery.data?.rate_limit, queryClient]);
-
-  // Rate limit countdown (legacy cleanup)
-  const [countdown, setCountdown] = useState<number | null>(null);
-
-  // Waitlist state
-  const [waitlistEmail, setWaitlistEmail] = useState("");
-  const [waitlistLoading, setWaitlistLoading] = useState(false);
-  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
-
-  const handleWaitlistSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!waitlistEmail || waitlistLoading) return;
-
-    setWaitlistLoading(true);
-    try {
-      const res = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: waitlistEmail }),
-      });
-      if (!res.ok) throw new Error("Failed to join waitlist");
-      setWaitlistSuccess(true);
-      setWaitlistEmail("");
-    } catch (err) {
-      alert("Something went wrong. Please try again later.");
-    } finally {
-      setWaitlistLoading(false);
-    }
-  };
 
   // Auto-submit search when keywords change (debounced)
   useEffect(() => {
