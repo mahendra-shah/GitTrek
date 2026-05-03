@@ -98,6 +98,33 @@ export default function Home() {
 
   // Rate limit countdown
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Waitlist state
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!waitlistEmail || waitlistLoading) return;
+
+    setWaitlistLoading(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: waitlistEmail }),
+      });
+      if (!res.ok) throw new Error("Failed to join waitlist");
+      setWaitlistSuccess(true);
+      setWaitlistEmail("");
+    } catch (err) {
+      alert("Something went wrong. Please try again later.");
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
   useEffect(() => {
     const resetTs = searchQuery.data?.rate_limit?.reset;
     if (!resetTs) return;
@@ -400,37 +427,60 @@ export default function Home() {
                     boxShadow: "var(--gt-shadow-hover)",
                     backdropFilter: "blur(8px)",
                   }}>
-                    <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "var(--gt-text)" }}>
-                      Get notified when we launch
-                    </p>
-                    <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gt-text-muted)" }}>
-                      Join <strong style={{ color: "var(--gt-primary)" }}>2,400+ developers</strong> on the waitlist.
-                    </p>
-                    <form 
-                      onSubmit={e => { e.preventDefault(); alert("Thanks for joining the waitlist!"); }}
-                      style={{ display: "flex", gap: 8, maxWidth: 320, margin: "0 auto" }}
-                    >
-                      <input 
-                        type="email" 
-                        placeholder="Enter your email" 
-                        required
-                        style={{ 
-                          flex: 1, padding: "10px 14px", borderRadius: 8, 
-                          border: "1px solid var(--gt-border)", background: "var(--gt-bg)",
-                          color: "var(--gt-text)", fontSize: 14, outline: "none"
-                        }} 
-                      />
-                      <button
-                        type="submit"
-                        style={{
-                          background: "var(--gt-primary)", color: "#fff", border: "none",
-                          borderRadius: 8, padding: "0 16px", fontSize: 14, fontWeight: 700, cursor: "pointer",
-                          whiteSpace: "nowrap"
-                        }}
-                      >
-                        Join Waitlist
-                      </button>
-                    </form>
+                    {waitlistSuccess ? (
+                      <div style={{ padding: "10px 0" }}>
+                        <p style={{ margin: 0, fontSize: 14, color: "var(--gt-primary)", fontWeight: 600 }}>
+                          ✨ You're on the list!
+                        </p>
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--gt-text-subtle)" }}>
+                          We'll notify you as soon as we're ready.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <p style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "var(--gt-text)" }}>
+                          Get notified when we launch
+                        </p>
+                        <p style={{ margin: "0 0 20px", fontSize: 13, color: "var(--gt-text-muted)" }}>
+                          Join <strong style={{ color: "var(--gt-primary)" }}>2,400+ developers</strong> on the waitlist.
+                        </p>
+                        <form 
+                          onSubmit={handleWaitlistSubmit}
+                          style={{ display: "flex", gap: 10, maxWidth: 400, margin: "0 auto", flexWrap: "wrap", justifyContent: "center" }}
+                        >
+                          <input 
+                            type="email" 
+                            placeholder="Enter your email" 
+                            required
+                            value={waitlistEmail}
+                            onChange={e => setWaitlistEmail(e.target.value)}
+                            disabled={waitlistLoading}
+                            style={{ 
+                              flex: "1 1 240px", padding: "10px 14px", borderRadius: 8, 
+                              border: "1px solid var(--gt-border)", background: "var(--gt-bg)",
+                              color: "var(--gt-text)", fontSize: 14, outline: "none",
+                              opacity: waitlistLoading ? 0.6 : 1,
+                              minWidth: 0
+                            }} 
+                          />
+                          <button
+                            type="submit"
+                            disabled={waitlistLoading}
+                            style={{
+                              flex: "0 0 auto",
+                              background: "var(--gt-primary)", color: "#fff", border: "none",
+                              borderRadius: 8, padding: "10px 20px", fontSize: 14, fontWeight: 700, cursor: waitlistLoading ? "default" : "pointer",
+                              whiteSpace: "nowrap", opacity: waitlistLoading ? 0.6 : 1,
+                              boxShadow: "0 2px 4px rgba(255, 122, 0, 0.2)"
+                            }}
+                          >
+                            {waitlistLoading ? "Joining..." : "Get Early Access"}
+                          </button>
+                        </form>
+
+                      </>
+                    )}
+
                   </div>
                 </div>
               </div>
