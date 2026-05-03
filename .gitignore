@@ -48,3 +48,4 @@ AGENTS.md
 /docs/github-badge-tracker-PRD-v2.md
 test-gql.js
 test-search.js
+playwright-report/
