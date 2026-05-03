@@ -205,7 +205,7 @@ Please check [ARCHITECTURE.md](docs/ARCHITECTURE.md) before making structural ch
 
 ## License
 
-MIT © [Mahendra](https://github.com/mahendra)
+MIT © [Mahendra](https://github.com/mahendra-shah)
 
 ---
 
