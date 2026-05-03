@@ -1,0 +1,100 @@
+/* ====================================================
+   GitTrek Design Tokens — Single Source of Truth
+   ==================================================== */
+
+:root {
+  /* Brand — same in both modes */
+  --gt-primary:      #F97316;
+  --gt-primary-dark: #EA580C;
+  --gt-primary-glow: rgba(249, 115, 22, 0.12);
+
+  /* ── LIGHT MODE ── */
+  --gt-bg:            #F6F8FA;
+  --gt-card:          #FFFFFF;
+  --gt-card-hover:    #F3F4F6;
+  --gt-sidebar:       #FFFFFF;
+  --gt-text:          #1A1A2E;
+  --gt-text-muted:    #57606A;
+  --gt-text-subtle:   #8C959F;
+  --gt-border:        #D0D7DE;
+  --gt-border-strong: #C9D1D9;
+  --gt-shadow:        0 1px 0 rgba(27,31,36,0.04), 0 4px 12px rgba(27,31,36,0.06);
+  --gt-shadow-hover:  0 2px 4px rgba(27,31,36,0.08), 0 8px 24px rgba(27,31,36,0.10);
+
+  /* Header — LIGHT in light mode */
+  --gt-header-bg:           #FFFFFF;
+  --gt-header-border:       #D0D7DE;
+  --gt-header-text:         #1A1A2E;
+  --gt-header-nav-active:   var(--gt-primary);
+  --gt-header-nav-inactive: #57606A;
+  --gt-header-rl-bg:        rgba(0,0,0,0.04);
+  --gt-header-rl-border:    rgba(0,0,0,0.10);
+  --gt-header-rl-text:      #57606A;
+
+  /* Filter inputs — Light in light mode */
+  --gt-input-bg:      #FFFFFF;
+  --gt-input-text:    #1A1A2E;
+  --gt-input-border:  #D0D7DE;
+
+  /* Status badges — light mode */
+  --gt-safe-bg:      rgba(22, 163, 74, 0.08);
+  --gt-safe-text:    #16A34A;
+  --gt-safe-border:  rgba(22, 163, 74, 0.20);
+  --gt-warn-bg:      rgba(180, 83, 9, 0.08);
+  --gt-warn-text:    #B45309;
+  --gt-warn-border:  rgba(180, 83, 9, 0.20);
+  --gt-danger-bg:    rgba(185, 28, 28, 0.08);
+  --gt-danger-text:  #B91C1C;
+  --gt-danger-border:rgba(185, 28, 28, 0.20);
+  
+  --gt-star:         #F59E0B;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* ── DARK MODE ── */
+    --gt-bg:            #0D0D14;
+    --gt-card:          #161620;
+    --gt-card-hover:    #1F1F2E;
+    --gt-sidebar:       #0D0D14;
+    --gt-text:          #E6EDF3;
+    --gt-text-muted:    #848D97;
+    --gt-text-subtle:   #484F58;
+    --gt-border:        #21262D;
+    --gt-border-strong: #30363D;
+    --gt-shadow:        0 1px 3px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.22);
+    --gt-shadow-hover:  0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.3);
+
+    /* Header — DARK in dark mode */
+    --gt-header-bg:           #0D1117;
+    --gt-header-border:       rgba(48, 54, 61, 1);
+    --gt-header-text:         #E6EDF3;
+    --gt-header-nav-inactive: rgba(230, 237, 243, 0.50);
+    --gt-header-rl-bg:        rgba(255,255,255,0.05);
+    --gt-header-rl-border:    rgba(255,255,255,0.10);
+    --gt-header-rl-text:      rgba(255,255,255,0.45);
+
+    /* Filter inputs — slightly lighter in dark mode */
+    --gt-input-bg:      #252535;
+    --gt-input-text:    #E6EDF3;
+    --gt-input-border:  rgba(255,255,255,0.10);
+
+    /* Status badges — dark mode */
+    --gt-safe-bg:      rgba(74, 222, 128, 0.12);
+    --gt-safe-text:    #4ADE80;
+    --gt-safe-border:  rgba(74, 222, 128, 0.28);
+    --gt-warn-bg:      rgba(251, 191, 36, 0.12);
+    --gt-warn-text:    #FCD34D;
+    --gt-warn-border:  rgba(251, 191, 36, 0.28);
+    --gt-danger-bg:    rgba(248, 113, 113, 0.12);
+    --gt-danger-text:  #F87171;
+    --gt-danger-border:rgba(248, 113, 113, 0.28);
+    
+    --gt-star:         #F59E0B;
+  }
+}
+
+@keyframes gt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
