@@ -13,7 +13,7 @@ export function FocusBadge({ focusBadge, username }: Props) {
   const { config, tierResult } = focusBadge;
   const nextTierLabel = tierResult.tier < 4 ? ["Bronze", "Silver", "Gold", "Platinum"][tierResult.tier] : "";
 
-  const isDiscussion = focusBadge.key === "galaxyBrain";
+  const { contributionNoun } = config;
   const loopUrl = LOOP_URLS[focusBadge.key] || "/";
 
   return (
@@ -54,19 +54,19 @@ export function FocusBadge({ focusBadge, username }: Props) {
           <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gt-primary)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
             Focus — Closest to next tier
           </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.3, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8 }}>
             {config.image ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={config.image} alt="" width={22} height={22} />
+              <img src={config.image} alt="" width={36} height={36} style={{ borderRadius: 6, objectFit: "contain" }} />
             ) : (
-              config.emoji
+              <span style={{ fontSize: 28 }}>{config.emoji}</span>
             )}
             {config.label}
           </div>
           <div style={{ fontSize: 13, color: "var(--gt-text-muted)", marginTop: 3 }}>
             {tierResult.tier === 0
-              ? `${tierResult.needed} ${isDiscussion ? "accepted answers" : "merged PRs"} to earn ${nextTierLabel}`
-              : `${tierResult.needed} more to reach ${nextTierLabel} — ${tierResult.percentToNext}% there`}
+              ? `${tierResult.needed} ${contributionNoun} to earn ${nextTierLabel}`
+              : `${tierResult.needed} more ${contributionNoun} to reach ${nextTierLabel} — ${tierResult.percentToNext}% there`}
           </div>
         </div>
       </div>
@@ -94,7 +94,7 @@ export function FocusBadge({ focusBadge, username }: Props) {
           (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
         }}
       >
-        {isDiscussion ? "Find Discussions →" : "Find Issues →"}
+        {config.label === "Galaxy Brain" ? "Find Discussions →" : "Find Issues →"}
       </button>
     </div>
   );

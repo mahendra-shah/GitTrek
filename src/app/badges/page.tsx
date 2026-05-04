@@ -80,7 +80,7 @@ export default async function BadgesPage({ searchParams }: PageProps) {
 
       {/* ── Any-user lookup bar ── */}
       <UserLookup
-        initialUsername={params.user ?? ""}
+        initialUsername={targetUsername ?? ""}
         signedInUser={signedInUser}
       />
 

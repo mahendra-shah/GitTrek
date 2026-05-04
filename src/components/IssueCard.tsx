@@ -29,6 +29,7 @@ export type IssueItem = {
   };
   tasks: { completed: number; total: number } | null;
   prStatus: PRStatus;
+  isDiscussion?: boolean;
 };
 
 function fmt(n: number) {
@@ -52,33 +53,33 @@ function ago(iso: string) {
 function PRBadge({ s }: { s: PRStatus }) {
   const base = "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold border";
   if (s.status === "guest") return (
-    <span title="Sign in to unlock live PR competition checks" style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={base}>
-      Sign in for PR check
+    <span title="Sign in to see if this issue is already being worked on by someone else" style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={base}>
+      Sign in to check
     </span>
   );
   if (s.status === "checking") return (
     <span style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={`${base} animate-pulse`}>
-      Checking...
+      Checking…
     </span>
   );
   if (s.status === "safe") return (
-    <span title="No linked branches or open PRs found. High chance this is available!" style={{ background: "var(--gt-safe-bg)", color: "var(--gt-safe-text)", borderColor: "var(--gt-safe-border)" }} className={base}>
-      ✓ Safe to claim
+    <span title="No one has opened a pull request for this issue yet — it's yours to claim!" style={{ background: "var(--gt-safe-bg)", color: "var(--gt-safe-text)", borderColor: "var(--gt-safe-border)" }} className={base}>
+      ✅ Available
     </span>
   );
   if (s.status === "open_pr") return (
-    <span title="Someone has already opened a PR for this issue" style={{ background: "var(--gt-danger-bg)", color: "var(--gt-danger-text)", borderColor: "var(--gt-danger-border)" }} className={base}>
-      Active PR exists
+    <span title="Someone has already opened a pull request for this issue — you'd be competing." style={{ background: "var(--gt-danger-bg)", color: "var(--gt-danger-text)", borderColor: "var(--gt-danger-border)" }} className={base}>
+      ⚠️ Being Claimed
     </span>
   );
   if (s.status === "draft_pr") return (
-    <span title="Someone is working on a Draft PR for this issue" style={{ background: "var(--gt-warn-bg)", color: "var(--gt-warn-text)", borderColor: "var(--gt-warn-border)" }} className={base}>
-      Draft PR exists
+    <span title="Someone is working on a draft pull request — they may not finish it, but proceed with caution." style={{ background: "var(--gt-warn-bg)", color: "var(--gt-warn-text)", borderColor: "var(--gt-warn-border)" }} className={base}>
+      🔶 Work in Progress
     </span>
   );
   if (s.status === "linked_branch") return (
-    <span title="A developer has linked a branch but hasn't opened a PR yet" style={{ background: "var(--gt-warn-bg)", color: "var(--gt-warn-text)", borderColor: "var(--gt-warn-border)" }} className={base}>
-      Branch in progress
+    <span title="A developer has created a branch for this issue but hasn't opened a PR yet." style={{ background: "var(--gt-warn-bg)", color: "var(--gt-warn-text)", borderColor: "var(--gt-warn-border)" }} className={base}>
+      🔀 Branch Started
     </span>
   );
   return (
@@ -91,6 +92,22 @@ function PRBadge({ s }: { s: PRStatus }) {
 
 export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: IssueItem; isGuest?: boolean; appliedLabels?: string[] }) {
   const hasRepoData = issue.repository.stars > 0 || issue.repository.forks > 0;
+  const isDiscussion = !!issue.isDiscussion;
+
+  // Unicorn Opportunity = zero comments + no assignee (implied by being in results) + active repo
+  const repoAgeDays = issue.repository.pushedAt
+    ? Math.floor((Date.now() - new Date(issue.repository.pushedAt).getTime()) / 86400000)
+    : 999;
+  const isUnicorn = issue.comments === 0 && repoAgeDays <= 14;
+
+  // Days since repo was last pushed
+  const repoLastActiveText = repoAgeDays === 0
+    ? "active today"
+    : repoAgeDays === 1
+    ? "active yesterday"
+    : repoAgeDays <= 30
+    ? `active ${repoAgeDays}d ago`
+    : null;
 
   return (
     <article
@@ -123,9 +140,36 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
           >
             {issue.repository.fullName}
           </a>
+          {/* Repo freshness signal */}
+          {repoLastActiveText && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700,
+              marginLeft: 8, padding: "1px 7px", borderRadius: 5,
+              background: repoAgeDays <= 7 ? "rgba(34,197,94,0.10)" : "rgba(99,102,241,0.08)",
+              color: repoAgeDays <= 7 ? "#16a34a" : "#6366f1",
+              border: `1px solid ${repoAgeDays <= 7 ? "rgba(34,197,94,0.25)" : "rgba(99,102,241,0.2)"}`,
+            }}>
+              {repoAgeDays <= 7 ? "🟢" : "🔵"} {repoLastActiveText}
+            </span>
+          )}
 
           {/* Title */}
           <h4 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {isDiscussion && (
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 5,
+                background: "rgba(99,102,241,0.10)", color: "#6366f1",
+                border: "1px solid rgba(99,102,241,0.25)", letterSpacing: "0.04em",
+              }}>💬 DISCUSSION</span>
+            )}
+            {isUnicorn && (
+              <span title={isDiscussion ? "Unicorn Opportunity: zero comments, fresh discussion — be the first to answer!" : "Unicorn Opportunity: zero comments, fresh repo — grab it fast!"} style={{
+                fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 5,
+                background: "rgba(249,115,22,0.10)", color: "var(--gt-primary)",
+                border: "1px solid rgba(249,115,22,0.3)", letterSpacing: "0.04em",
+                animation: "gt-unicorn-pulse 2s ease-in-out infinite",
+              }}>🦄 UNICORN</span>
+            )}
             <a
               href={issue.htmlUrl}
               target="_blank"
@@ -215,9 +259,17 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
           </div>
         </div>
 
-        {/* PR badge */}
+        {/* PR badge — only for issues, not discussions */}
         <div className="flex-shrink-0 pt-1">
-          <PRBadge s={issue.prStatus} />
+          {!isDiscussion && <PRBadge s={issue.prStatus} />}
+          {isDiscussion && (
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 4,
+              background: "rgba(99,102,241,0.08)", color: "#6366f1",
+              border: "1px solid rgba(99,102,241,0.2)", borderRadius: 6,
+              padding: "4px 10px", fontSize: 11, fontWeight: 700,
+            }}>🧠 Answer it</span>
+          )}
         </div>
       </div>
     </article>

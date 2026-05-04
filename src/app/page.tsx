@@ -37,6 +37,9 @@ const DEFAULT: FilterDraft = {
   hasContributing: false,
   org: "",
   onlyOrgs: false,
+  contributionType: "issue",
+  activeMaintainer: false,
+  pairingRequested: false,
 };
 
 function HomeContent() {
@@ -103,6 +106,11 @@ function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...applied,
+          type: applied.contributionType,
+          activeMaintainer: applied.activeMaintainer,
+          pairingRequested: applied.pairingRequested,
+          // Discussions don't use labels the same way
+          labels: applied.contributionType === "discussion" ? [] : applied.labels,
           perPage,
           page: currentPage,
           cursor,
@@ -139,11 +147,15 @@ function HomeContent() {
     }, 500);
     return () => clearTimeout(timer);
   }, [draft.text, applied.text]);
+  const resetPagination = () => {
+    setCurrentPage(1);
+    setCursorHistory([null]);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setApplied({ ...draft });
-    setCurrentPage(1);
-    setCursorHistory([null]);
+    resetPagination();
   };
 
   const handlePageChange = (page: number) => {
@@ -218,6 +230,87 @@ function HomeContent() {
         )}
 
 
+        {/* ── 🎯 MISSIONS BAR ── */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gt-text-subtle)" }}>
+              🎯 Quick Missions
+            </span>
+            <span style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>— 1-click badge hunting mode</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {[
+              {
+                id: "galaxy-brain",
+                emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
+                desc: "Unanswered Q&A discussions",
+                onClick: () => {
+                  const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
+                  setDraft(m); setApplied(m); resetPagination();
+                },
+              },
+              {
+                id: "pair-extraordinaire",
+                emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
+                desc: "Issues asking for co-authors",
+                onClick: () => {
+                  const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
+                  setDraft(m); setApplied(m); resetPagination();
+                },
+              },
+              {
+                id: "pull-shark",
+                emoji: "🦈", label: "Pull Shark", badge: "Fast",
+                desc: "Zero-comment, fresh issues",
+                onClick: () => {
+                  const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
+                  setDraft(m); setApplied(m); resetPagination();
+                },
+              },
+            ].map(mission => (
+              <button
+                key={mission.id}
+                id={`mission-${mission.id}`}
+                type="button"
+                onClick={mission.onClick}
+                className="gt-mission-shimmer"
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "9px 14px", borderRadius: 12,
+                  border: "1px solid var(--gt-border)",
+                  cursor: "pointer", textAlign: "left",
+                  boxShadow: "var(--gt-shadow)",
+                  transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
+                  position: "relative", overflow: "hidden",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-primary)";
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border)";
+                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
+                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow)";
+                }}
+              >
+                <span style={{ fontSize: 22 }}>{mission.emoji}</span>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gt-text)" }}>{mission.label}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                      background: "var(--gt-primary-glow)", color: "var(--gt-primary)",
+                      border: "1px solid rgba(249,115,22,0.25)",
+                    }}>{mission.badge}</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>{mission.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* ── FIND ISSUES TAB ── */}
         {(
           <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32 }}>
@@ -245,6 +338,66 @@ function HomeContent() {
             {/* Results */}
             <section>
               {/* Results header */}
+              {/* Contribution Type Toggle with Elastic Spring Effect */}
+              <div style={{ display: "flex", marginBottom: 16 }}>
+                <div style={{
+                  display: "flex", gap: 4, padding: 4, position: "relative", width: 340,
+                  background: "var(--gt-card)", border: "1px solid var(--gt-border)",
+                  borderRadius: 12, boxShadow: "var(--gt-shadow)",
+                }}>
+                  {/* Absolute positioned background highlight with elastic spring overshoot */}
+                  <div style={{
+                    position: "absolute",
+                    top: 4,
+                    bottom: 4,
+                    left: draft.contributionType === "issue" ? 4 : "calc(50% + 2px)",
+                    width: "calc(50% - 6px)",
+                    background: "var(--gt-card-hover)",
+                    border: "1px solid var(--gt-border)",
+                    borderRadius: 9,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.10)",
+                    transition: "left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                    zIndex: 0,
+                  }} />
+
+                  {([
+                    { val: "issue" as const, label: "💻 Code Issues", desc: "Contribute code to open source" },
+                    { val: "discussion" as const, label: "🧠 Discussions", desc: "Answer Q&A for Galaxy Brain" },
+                  ]).map(({ val, label, desc }) => {
+                    const isActive = draft.contributionType === val;
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        title={desc}
+                        onClick={() => {
+                          const updated = { ...draft, contributionType: val, labels: val === "discussion" ? [] : draft.labels };
+                          setDraft(updated);
+                          setApplied(updated);
+                          resetPagination();
+                        }}
+                        style={{
+                          flex: 1, padding: "7px 0", borderRadius: 9, fontSize: 13, fontWeight: isActive ? 700 : 500,
+                          color: isActive ? "var(--gt-text)" : "var(--gt-text-muted)",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          transition: "color 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.1s ease",
+                          whiteSpace: "nowrap",
+                          zIndex: 1,
+                          textAlign: "center",
+                          position: "relative",
+                        }}
+                        onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
+                        onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
                 {/* Search within results */}
                 <form
@@ -260,7 +413,7 @@ function HomeContent() {
                   <Search size={15} style={{ color: "var(--gt-text-subtle)", flexShrink: 0 }} />
                   <input
                     type="text"
-                    placeholder="Search keywords..."
+                    placeholder={draft.contributionType === "discussion" ? "Search discussions…" : "Search issues…"}
                     value={draft.text}
                     onChange={e => setDraft(p => ({ ...p, text: e.target.value }))}
                     style={{
@@ -311,7 +464,7 @@ function HomeContent() {
                   {searchQuery.isFetching ? (
                     <span style={{ color: "var(--gt-primary)" }}>Loading via GraphQL…</span>
                   ) : searchQuery.data ? (
-                    `${searchQuery.data.total_count.toLocaleString()} issues found`
+                    `${searchQuery.data.total_count.toLocaleString()} ${applied.contributionType === "discussion" ? "discussions" : "issues"} found`
                     + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
                   ) : "Run a search"}
                 </span>
@@ -360,8 +513,8 @@ function HomeContent() {
                     </div>
                   ))
                 ) : displayedIssues.length > 0 ? (
-                  displayedIssues.map(issue => (
-                    <IssueCard key={issue.id} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
+                  displayedIssues.map((issue, idx) => (
+                    <IssueCard key={`${issue.id}-${issue.number}-${idx}`} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
                   ))
                 ) : null}
               </div>

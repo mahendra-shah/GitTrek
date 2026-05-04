@@ -60,12 +60,22 @@ describe('IssueCard Component', () => {
 
   it('renders PR badges correctly based on status', () => {
     const { unmount } = render(<IssueCard issue={mockIssue} />);
-    expect(screen.getByText('✓ Safe to claim')).toBeInTheDocument();
+    expect(screen.getByText('✅ Available')).toBeInTheDocument();
     unmount();
 
     const openPrIssue = { ...mockIssue, prStatus: { ...mockIssue.prStatus, status: 'open_pr' as const } };
-    render(<IssueCard issue={openPrIssue} />);
-    expect(screen.getByText('Active PR exists')).toBeInTheDocument();
+    const { unmount: unmountOpen } = render(<IssueCard issue={openPrIssue} />);
+    expect(screen.getByText('⚠️ Being Claimed')).toBeInTheDocument();
+    unmountOpen();
+
+    const draftPrIssue = { ...mockIssue, prStatus: { ...mockIssue.prStatus, status: 'draft_pr' as const } };
+    const { unmount: unmountDraft } = render(<IssueCard issue={draftPrIssue} />);
+    expect(screen.getByText('🔶 Work in Progress')).toBeInTheDocument();
+    unmountDraft();
+
+    const linkedBranchIssue = { ...mockIssue, prStatus: { ...mockIssue.prStatus, status: 'linked_branch' as const } };
+    render(<IssueCard issue={linkedBranchIssue} />);
+    expect(screen.getByText('🔀 Branch Started')).toBeInTheDocument();
   });
 
   it('renders labels and applies active styling based on appliedLabels', () => {
