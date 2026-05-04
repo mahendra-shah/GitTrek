@@ -95,6 +95,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     label: "Quickdraw",
     emoji: "⚡",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/quickdraw-default.png",
+    contributionNoun: "quick contributions",
     caveat: "Cannot be tracked via the GitHub API. Requires scanning timestamps of all PRs and issues, which exceeds practical API rate limits.",
   },
   publicSponsor: {
