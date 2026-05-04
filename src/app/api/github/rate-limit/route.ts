@@ -31,7 +31,7 @@ export async function GET() {
     // If no session, /search uses unauthenticated REST (search limit, mapped to the server IP or bot token).
     // Since /search now uses GITHUB_BOT_TOKEN if available, we check if token is present.
     // Wait, let's just make RateLimitDisplay look at activeSearchLimit.
-    data.activeSearchLimit = token ? data.resources.graphql : data.resources.search;
+    data.activeSearchLimit = sessionToken ? data.resources.graphql : (data.resources.search || data.resources.graphql);
 
     return NextResponse.json(data);
   } catch (error: any) {

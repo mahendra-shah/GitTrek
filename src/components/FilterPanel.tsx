@@ -3,6 +3,8 @@
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { TagInput } from "./TagInput";
+import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export type FilterDraft = {
   text: string;
@@ -19,6 +21,10 @@ export type FilterDraft = {
   hasContributing: boolean;
   org?: string;
   onlyOrgs?: boolean;
+  // New fields
+  contributionType: "issue" | "discussion";
+  activeMaintainer: boolean;
+  pairingRequested: boolean;
 };
 
 type FilterPanelProps = {
@@ -68,6 +74,15 @@ function SL({ children }: { children: React.ReactNode }) {
   return <span style={labelSt}>{children}</span>;
 }
 
+/** Inline info tooltip */
+function Tip({ text }: { text: string }) {
+  return (
+    <span title={text} style={{ cursor: "help", display: "inline-flex", marginLeft: 4, verticalAlign: "middle" }}>
+      <Info size={12} style={{ color: "var(--gt-text-subtle)" }} />
+    </span>
+  );
+}
+
 function DarkInput({ value, onChange, placeholder, type = "text" }: {
   value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string;
 }) {
@@ -81,8 +96,6 @@ function DarkInput({ value, onChange, placeholder, type = "text" }: {
     />
   );
 }
-
-import { ChevronDown } from "lucide-react";
 
 function DarkSelect({ value, onChange, children }: {
   value: string | number; onChange: (v: string) => void; children: React.ReactNode;
@@ -135,13 +148,13 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   );
 }
 
-function RangeBlock({ label, minVal, maxVal, maxLimit, onMinChange, onMaxChange }: {
-  label: string; minVal: number; maxVal: number | null; maxLimit: number;
+function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onMaxChange }: {
+  label: string; tooltip?: string; minVal: number; maxVal: number | null; maxLimit: number;
   onMinChange: (v: number) => void; onMaxChange: (v: number | null) => void;
 }) {
   return (
     <div>
-      <SL>{label}</SL>
+      <SL>{label}{tooltip && <Tip text={tooltip} />}</SL>
       <div style={{ padding: "0 4px", marginBottom: 14 }}>
         <Slider
           range min={0} max={maxLimit}
@@ -174,22 +187,16 @@ function RangeBlock({ label, minVal, maxVal, maxLimit, onMinChange, onMaxChange 
   );
 }
 
-function FilterRow({ label, sublabel, checked, onChange, disabled, comingSoon }: {
-  label: string; sublabel?: string; checked: boolean;
-  onChange: (v: boolean) => void; disabled?: boolean; comingSoon?: boolean;
+function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
+  label: string; sublabel?: string; tooltip?: string;
+  checked: boolean; onChange: (v: boolean) => void; disabled?: boolean;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 36 }}>
       <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <span style={{ fontSize: 14, color: "var(--gt-text)", fontWeight: 500 }}>{label}</span>
-          {comingSoon && (
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-              background: "var(--gt-primary-glow)", color: "var(--gt-primary)",
-              border: "1px solid rgba(249,115,22,0.2)", letterSpacing: "0.05em",
-            }}>SOON</span>
-          )}
+          {tooltip && <Tip text={tooltip} />}
         </div>
         {sublabel && <span style={{ fontSize: 11, color: "var(--gt-text-subtle)" }}>{sublabel}</span>}
       </div>
@@ -200,6 +207,12 @@ function FilterRow({ label, sublabel, checked, onChange, disabled, comingSoon }:
 
 export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
   const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
+  // Advanced section: collapsed for guests, expanded for logged-in users
+  const [advancedOpen, setAdvancedOpen] = useState(!isGuest);
+  // Prevent hydration mismatch: isSearching is true on client immediately but false on SSR
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const effectiveSearching = mounted && isSearching;
 
   return (
     <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -215,7 +228,7 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
 
       {/* Labels */}
       <div>
-        <SL>Labels</SL>
+        <SL>Issue Labels<Tip text="Labels assigned to the issue on GitHub. 'good first issue' is ideal for newcomers." /></SL>
         <div style={{
           background: "var(--gt-input-bg)", borderRadius: 8,
           border: "1px solid var(--gt-input-border)", padding: "8px 10px", minHeight: 42,
@@ -228,27 +241,9 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </div>
       </div>
 
-      {/* Stars */}
-      <RangeBlock
-        label="Stars Range"
-        minVal={draft.minStars} maxVal={draft.maxStars}
-        maxLimit={STARS_MAX}
-        onMinChange={v => set({ minStars: v })}
-        onMaxChange={v => set({ maxStars: v })}
-      />
-
-      {/* Forks */}
-      <RangeBlock
-        label="Forks Range"
-        minVal={draft.minForks} maxVal={draft.maxForks}
-        maxLimit={FORKS_MAX}
-        onMinChange={v => set({ minForks: v })}
-        onMaxChange={v => set({ maxForks: v })}
-      />
-
       {/* Issue Age */}
       <div>
-        <SL>Issue Age</SL>
+        <SL>Issue Age<Tip text="How recently the issue was created. Newer issues have less competition." /></SL>
         <DarkSelect value={draft.issueAgeDays} onChange={v => set({ issueAgeDays: parseInt(v) })}>
           <option value={7}>Under 7 days</option>
           <option value={14}>Under 14 days</option>
@@ -258,76 +253,157 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </DarkSelect>
       </div>
 
-      {/* Repo Activity */}
-      <div>
-        <SL>Repo Activity</SL>
-        <DarkSelect value={draft.repoPushedDays} onChange={v => set({ repoPushedDays: parseInt(v) })}>
-          <option value={30}>Active last 30 days</option>
-          <option value={90}>Active last 90 days</option>
-          <option value={180}>Active last 6 months</option>
-          <option value={365}>Active last year</option>
-        </DarkSelect>
-      </div>
-
-      {/* Filters toggles */}
+      {/* Basic Toggles */}
       <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
-        <SL>Filters</SL>
+        <SL>Quick Filters</SL>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gt-text)" }}>Organization</span>
-            <input
-              type="text"
-              placeholder="e.g. vercel, facebook"
-              value={draft.org || ""}
-              onChange={e => set({ org: e.target.value })}
-              style={{ ...inputSt, fontSize: 13, padding: "8px 12px" }}
-            />
-          </div>
-          <FilterRow label="No assignee" checked={draft.noAssignee} onChange={v => set({ noAssignee: v })} />
           <FilterRow
-            label="0 comments"
-            sublabel={draft.zeroComments ? "Only issues with no replies" : undefined}
+            label="No one assigned"
+            tooltip="Only show issues that haven't been assigned to anyone yet — so you know they're still up for grabs."
+            checked={draft.noAssignee}
+            onChange={v => set({ noAssignee: v })}
+          />
+          <FilterRow
+            label="No replies yet"
+            tooltip="Only issues with zero comments. These are the most untouched opportunities — your message will be the first."
+            sublabel={draft.zeroComments ? "Only issues nobody has commented on" : undefined}
             checked={draft.zeroComments}
             onChange={v => set({ zeroComments: v })}
           />
           <FilterRow
-            label="No linked PR"
+            label="No PR in progress"
             sublabel={isGuest ? "Sign in to unlock" : undefined}
+            tooltip="Hides issues that already have an open pull request — so you're not building something already being built."
             checked={!isGuest && hideLinkedPRs}
             onChange={isGuest ? () => {} : setHideLinkedPRs}
             disabled={isGuest}
           />
+        </div>
+      </div>
+
+      {/* Contribution Signals */}
+      <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
+        <SL>Contribution Signals</SL>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <FilterRow
-            label="Has CONTRIBUTING"
-            sublabel="Only repos with CONTRIBUTING.md"
-            checked={draft.hasContributing}
-            onChange={v => set({ hasContributing: v })}
+            label="🔥 Active maintainer"
+            tooltip="Only repos pushed to in the last 30 days. Avoids 'ghost' repos where your PR would be ignored."
+            sublabel="Repo updated in the last 30 days"
+            checked={draft.activeMaintainer}
+            onChange={v => set({ activeMaintainer: v })}
           />
           <FilterRow
-            label="Organizations only"
-            sublabel="Exclude personal user repos"
-            checked={draft.onlyOrgs || false}
-            onChange={v => set({ onlyOrgs: v })}
+            label="🤝 Looking for pairing"
+            tooltip="Issues where someone in the comments has asked to pair program or co-author — helps earn Pair Extraordinaire badge."
+            sublabel="Issues with pairing requests in comments"
+            checked={draft.pairingRequested}
+            onChange={v => set({ pairingRequested: v })}
           />
         </div>
       </div>
 
+      {/* ── Advanced Filters (collapsible) ── */}
+      <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen(p => !p)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            width: "100%", background: "none", border: "none", cursor: "pointer",
+            padding: 0, marginBottom: advancedOpen ? 16 : 0,
+          }}
+        >
+          <span style={{ ...labelSt, marginBottom: 0 }}>Advanced Filters</span>
+          {advancedOpen
+            ? <ChevronUp size={14} style={{ color: "var(--gt-text-subtle)" }} />
+            : <ChevronDown size={14} style={{ color: "var(--gt-text-subtle)" }} />}
+        </button>
+
+        {advancedOpen && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Repo Popularity */}
+            <RangeBlock
+              label="Repo Popularity (Stars)"
+              tooltip="Filter by how popular the repo is. More stars usually means an active community — but fewer stars means less competition."
+              minVal={draft.minStars} maxVal={draft.maxStars}
+              maxLimit={STARS_MAX}
+              onMinChange={v => set({ minStars: v })}
+              onMaxChange={v => set({ maxStars: v })}
+            />
+
+            {/* Forks */}
+            <RangeBlock
+              label="Repo Activity (Forks)"
+              tooltip="Forks indicate how many developers are actively building on top of this project. Higher forks = more active development."
+              minVal={draft.minForks} maxVal={draft.maxForks}
+              maxLimit={FORKS_MAX}
+              onMinChange={v => set({ minForks: v })}
+              onMaxChange={v => set({ maxForks: v })}
+            />
+
+            {/* Repo Activity */}
+            <div>
+              <SL>Last Code Push<Tip text="When the repo last had code committed to it. Ensures you're not contributing to a dead project." /></SL>
+              <DarkSelect value={draft.repoPushedDays} onChange={v => set({ repoPushedDays: parseInt(v) })}>
+                <option value={30}>Within last 30 days</option>
+                <option value={90}>Within last 90 days</option>
+                <option value={180}>Within last 6 months</option>
+                <option value={365}>Within last year</option>
+              </DarkSelect>
+            </div>
+
+            {/* Org filter */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gt-text)" }}>
+                Search in Org
+                <Tip text="Limit results to a specific GitHub organization, e.g. 'vercel', 'microsoft'." />
+              </span>
+              <input
+                type="text"
+                placeholder="e.g. vercel, facebook"
+                value={draft.org || ""}
+                onChange={e => set({ org: e.target.value })}
+                style={{ ...inputSt, fontSize: 13, padding: "8px 12px" }}
+              />
+            </div>
+
+            {/* More toggles */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <FilterRow
+                label="Has contribution guide"
+                tooltip="Only repos that have a CONTRIBUTING.md file — these projects actively welcome new contributors."
+                sublabel="Repo has CONTRIBUTING.md"
+                checked={draft.hasContributing}
+                onChange={v => set({ hasContributing: v })}
+              />
+              <FilterRow
+                label="Company-backed repos only"
+                tooltip="Only show issues from organization-owned repos (e.g. Google, Microsoft). These tend to have more rigorous code review."
+                sublabel="Exclude personal projects"
+                checked={draft.onlyOrgs || false}
+                onChange={v => set({ onlyOrgs: v })}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <button
         type="submit"
-        disabled={isSearching}
+        disabled={effectiveSearching || undefined}
         style={{
           width: "100%",
           background: "var(--gt-text)",
           color: "var(--gt-card)",
           border: "none", borderRadius: 10, padding: "13px 0",
           fontSize: 15, fontWeight: 700,
-          cursor: isSearching ? "wait" : "pointer",
-          opacity: isSearching ? 0.7 : 1,
+          cursor: effectiveSearching ? "wait" : "pointer",
+          opacity: effectiveSearching ? 0.7 : 1,
           transition: "opacity 0.2s",
           marginTop: 4,
         }}
       >
-        {isSearching ? "Searching…" : "Search issues"}
+        {effectiveSearching ? "Searching…" : "Search issues"}
       </button>
     </form>
   );

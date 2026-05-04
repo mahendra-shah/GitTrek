@@ -80,6 +80,12 @@ export function UserLookup({ initialUsername = "", signedInUser }: Props) {
             }}
             onFocus={(e) => { e.currentTarget.style.borderColor = "var(--gt-primary)"; }}
             onBlur={(e) => { e.currentTarget.style.borderColor = "var(--gt-input-border)"; }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && value.trim() && !isPending) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
           />
           {value && (
             <button

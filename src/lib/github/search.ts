@@ -14,6 +14,9 @@ export type IssueSearchFilters = {
   org?: string;
   onlyOrgs?: boolean;
   perPage?: number;
+  type?: "issue" | "discussion";
+  activeMaintainer?: boolean;
+  pairingRequested?: boolean;
   sort?: "created" | "updated" | "comments";
   order?: "asc" | "desc";
 };
@@ -94,35 +97,19 @@ function pushOrGroup(
 }
 
 export function buildIssueSearchQuery(filters: IssueSearchFilters): QueryBuildResult {
-  const tokens: string[] = ["is:issue", "is:open", "archived:false"];
+  const isDiscussion = filters.type === "discussion";
+  const tokens: string[] = isDiscussion
+    ? ["is:open"]
+    : ["is:issue", "is:open", "archived:false"];
   const warnings: string[] = [];
   const state = { orCount: 0, warnings };
 
-  if (filters.noAssignee) {
-    tokens.push("no:assignee");
-  }
-
+  // org: works for both issues and discussions
   if (filters.org) {
     tokens.push(`org:${filters.org}`);
   }
 
-  // Zero comments toggle
-  if (filters.zeroComments) {
-    tokens.push("comments:0");
-  }
-
-  if (filters.issueAgeDays) {
-    tokens.push(`created:>=${dateDaysAgo(filters.issueAgeDays)}`);
-  }
-
-  const labels = normalizeList(filters.labels);
-  if (labels.length === 1) {
-    tokens.push(`label:"${labels[0]}"`);
-  } else if (labels.length > 1) {
-    const parts = labels.map((label) => `label:"${label}"`);
-    pushOrGroup(tokens, parts, "label", state);
-  }
-
+  // language: works for both
   const languages = normalizeList(filters.languages);
   if (languages.length === 1) {
     tokens.push(`language:${languages[0]}`);
@@ -131,9 +118,42 @@ export function buildIssueSearchQuery(filters: IssueSearchFilters): QueryBuildRe
     pushOrGroup(tokens, parts, "language", state);
   }
 
+  // Free-text search works for both
   const text = filters.text?.trim();
   if (text) {
     tokens.push(text);
+  }
+
+  // ── Issue-only qualifiers ─────────────────────────────────────────────────
+  // These are not supported in GitHub Discussion search and will cause 0 results.
+  if (!isDiscussion) {
+    if (filters.noAssignee) {
+      tokens.push("no:assignee");
+    }
+
+    if (filters.zeroComments) {
+      tokens.push("comments:0");
+    }
+
+    if (filters.issueAgeDays) {
+      tokens.push(`created:>=${dateDaysAgo(filters.issueAgeDays)}`);
+    }
+
+    if (filters.activeMaintainer) {
+      tokens.push(`pushed:>=${dateDaysAgo(30)}`);
+    }
+
+    if (filters.pairingRequested) {
+      tokens.push(`("pair with me" OR "pairing" OR "pair") in:comments`);
+    }
+
+    const labels = normalizeList(filters.labels);
+    if (labels.length === 1) {
+      tokens.push(`label:"${labels[0]}"`);
+    } else if (labels.length > 1) {
+      const parts = labels.map((label) => `label:"${label}"`);
+      pushOrGroup(tokens, parts, "label", state);
+    }
   }
 
   let query = tokens.join(" ");
@@ -144,6 +164,7 @@ export function buildIssueSearchQuery(filters: IssueSearchFilters): QueryBuildRe
 
   return { query, warnings };
 }
+
 
 export function filterByRepoQuality(
   items: IssueSearchItem[],

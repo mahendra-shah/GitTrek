@@ -16,10 +16,7 @@ const API_BASE = "https://api.github.com";
 const FilterSchema = z.object({
   text: z.string().trim().max(120).optional().default(""),
   languages: z.array(z.string()).optional().default([]),
-  labels: z
-    .array(z.string())
-    .optional()
-    .default(["good first issue", "help wanted"]),
+  labels: z.array(z.string()).optional(),
   zeroComments: z.boolean().optional().default(false),
   noAssignee: z.boolean().optional().default(true),
   issueAgeDays: z.number().int().min(1).max(3650).optional().default(30),
@@ -36,6 +33,9 @@ const FilterSchema = z.object({
   cursor: z.string().optional().nullable(),
   sort: z.enum(["created", "updated", "comments"]).optional().default("created"),
   order: z.enum(["asc", "desc"]).optional().default("desc"),
+  type: z.enum(["issue", "discussion"]).optional().default("issue"),
+  activeMaintainer: z.boolean().optional().default(false),
+  pairingRequested: z.boolean().optional().default(false),
 });
 
 type Filters = z.infer<typeof FilterSchema>;
@@ -48,14 +48,11 @@ function getRateLimit(headers: Headers) {
   };
 }
 
-const GRAPHQL_QUERY = `
+const GRAPHQL_ISSUE_QUERY = `
   query SearchIssues($query: String!, $first: Int!, $after: String) {
     search(query: $query, type: ISSUE, first: $first, after: $after) {
       issueCount
-      pageInfo {
-        hasNextPage
-        endCursor
-      }
+      pageInfo { hasNextPage endCursor }
       nodes {
         ... on Issue {
           databaseId
@@ -89,14 +86,44 @@ const GRAPHQL_QUERY = `
         }
       }
     }
-    rateLimit {
-      limit
-      cost
-      remaining
-      resetAt
-    }
+    rateLimit { limit cost remaining resetAt }
   }
 `;
+
+// Separate query for GitHub Discussions (Galaxy Brain badge)
+const GRAPHQL_DISCUSSION_QUERY = `
+  query SearchDiscussions($query: String!, $first: Int!, $after: String) {
+    search(query: $query, type: DISCUSSION, first: $first, after: $after) {
+      discussionCount
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        ... on Discussion {
+          databaseId
+          number
+          title
+          url
+          createdAt
+          updatedAt
+          comments { totalCount }
+          labels(first: 10) { nodes { name } }
+          repository {
+            nameWithOwner
+            stargazerCount
+            forkCount
+            pushedAt
+            isFork
+            url
+            owner { __typename }
+          }
+        }
+      }
+    }
+    rateLimit { limit cost remaining resetAt }
+  }
+`;
+
+// Keep old name as alias for backwards-compat
+const GRAPHQL_QUERY = GRAPHQL_ISSUE_QUERY;
 
 function determinePRStatus(issueNode: any) {
   let openPrCount = 0;
@@ -130,6 +157,9 @@ function determinePRStatus(issueNode: any) {
 }
 
 async function searchGraphQL(token: string, q: string, filters: Filters) {
+  const isDiscussion = filters.type === "discussion";
+  const gqlQuery = isDiscussion ? GRAPHQL_DISCUSSION_QUERY : GRAPHQL_ISSUE_QUERY;
+
   const variables = {
     query: q,
     first: filters.perPage,
@@ -143,7 +173,7 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
       "Content-Type": "application/json",
       "X-GitHub-Api-Version": API_VERSION,
     },
-    body: JSON.stringify({ query: GRAPHQL_QUERY, variables }),
+    body: JSON.stringify({ query: gqlQuery, variables }),
     cache: "no-store",
   });
 
@@ -163,8 +193,10 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
 
   const rawItems = nodes.map((node: any) => {
     const ownerRepo = node.repository.nameWithOwner.split("/");
+
+    // Discussions don't have task lists or PR linkage
     let tasks = null;
-    if (node.body) {
+    if (!isDiscussion && node.body) {
       const allTasks = [...node.body.matchAll(/-\s+\[([xX\s])\]/g)];
       if (allTasks.length > 0) {
         const completed = allTasks.filter(m => m[1] && m[1].toLowerCase() === 'x').length;
@@ -182,6 +214,7 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
       comments: node.comments?.totalCount || 0,
       labels: node.labels?.nodes?.map((l: any) => l.name) || [],
       tasks,
+      isDiscussion,
       owner: ownerRepo[0],
       repo: ownerRepo[1],
       repository: {
@@ -194,16 +227,19 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
         hasContributing: !!node.repository.hasContributingFile,
         ownerType: node.repository.owner?.__typename,
       },
-      assignees: node.assignees?.nodes || [],
-      prStatus: determinePRStatus(node)
+      assignees: isDiscussion ? [] : (node.assignees?.nodes || []),
+      prStatus: isDiscussion
+        ? { status: "safe" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 }
+        : determinePRStatus(node),
     };
   });
 
   const rateLimitData = result.data.rateLimit;
+  const totalCount = isDiscussion ? data.discussionCount : data.issueCount;
 
   return {
     items: rawItems,
-    total_count: data.issueCount,
+    total_count: totalCount,
     hasMore: data.pageInfo.hasNextPage,
     endCursor: data.pageInfo.endCursor,
     rateLimit: rateLimitData ? {
@@ -300,11 +336,17 @@ export async function POST(request: Request) {
     }
 
     const filters = parsed.data;
-    const token = await getToken();
+    const token = (await getToken()) || process.env.GITHUB_BOT_TOKEN;
     
     // Guest mode uses REST and limits perPage to 10
     if (!token && filters.perPage > 10) {
       filters.perPage = 10;
+    }
+
+    // Apply default labels only when the client didn't send the field at all.
+    // An explicit empty array [] (e.g. from the Galaxy Brain mission) means "no label filter".
+    if (filters.labels === undefined) {
+      filters.labels = ["good first issue", "help wanted"];
     }
 
     const { query: q, warnings: qWarnings } = buildIssueSearchQuery(filters);
@@ -316,6 +358,7 @@ export async function POST(request: Request) {
       });
     }
 
+    const isDiscussion = filters.type === "discussion";
     let validItems: any[] = [];
     let qualityFiltered = 0;
     let searchResult: any;
@@ -332,11 +375,15 @@ export async function POST(request: Request) {
           searchResult = await searchGraphQL(token, q, { ...filters, cursor: currentCursor, perPage: 100 });
           
           let fetchedItems = searchResult.items;
-          if (filters.noAssignee) {
+          if (!isDiscussion && filters.noAssignee) {
             fetchedItems = fetchedItems.filter((i: any) => i.assignees.length === 0);
           }
           
-          const qualityResult = filterByRepoQuality(fetchedItems as any, filters);
+          // Skip quality filter for discussions — the Discussion search API already scopes
+          // results well, and applying fork/stars/pushedAt post-filters would silently drop valid discussions.
+          const qualityResult = isDiscussion
+            ? { items: fetchedItems, filteredOut: 0 }
+            : filterByRepoQuality(fetchedItems as any, filters);
           qualityFiltered += qualityResult.filteredOut;
           
           validItems.push(...qualityResult.items);

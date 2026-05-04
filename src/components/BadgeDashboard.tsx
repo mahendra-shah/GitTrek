@@ -23,22 +23,33 @@ type Props = {
 export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const cacheKey = `gittrek-badges-${username}`;
 
-  const [results, setResults] = useState<BadgeResult[] | null>(null);
+  const [results, setResults] = useState<BadgeResult[] | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem(`gittrek-badges-${username}`);
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    // 1. Immediately try to load from local storage if it's the logged-in user
-    if (isOwnProfile && !results) {
+    // When username changes, check cache again instantly to avoid showing stale data or skeletons
+    if (typeof window !== "undefined") {
       try {
-        const cached = localStorage.getItem(cacheKey);
+        const cached = localStorage.getItem(`gittrek-badges-${username}`);
         if (cached) {
           setResults(JSON.parse(cached));
+        } else {
+          setResults(null);
         }
       } catch {
-        // ignore parse errors
+        setResults(null);
       }
     }
-  }, [cacheKey, isOwnProfile]); // Run once to paint cache
+    setNotFound(false);
+  }, [username]);
 
   useEffect(() => {
     let active = true;

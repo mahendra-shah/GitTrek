@@ -96,3 +96,24 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+@keyframes gt-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes gt-unicorn-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249,115,22,0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(249,115,22,0); }
+}
+
+.gt-mission-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(249,115,22,0.08) 50%,
+    transparent 100%
+  );
+  background-size: 200% auto;
+  animation: gt-shimmer 3s linear infinite;
+}
