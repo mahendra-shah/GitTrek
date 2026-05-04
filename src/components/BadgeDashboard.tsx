@@ -24,6 +24,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const cacheKey = `gittrek-badges-${username}`;
 
   const [results, setResults] = useState<BadgeResult[] | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     // 1. Immediately try to load from local storage if it's the logged-in user
@@ -43,6 +44,17 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
     let active = true;
 
     async function fetchAll() {
+      // 0. Verify the user actually exists first
+      try {
+        const userRes = await fetch(`/api/github/user?username=${encodeURIComponent(username)}`);
+        if (userRes.status === 404) {
+          if (active) setNotFound(true);
+          return;
+        }
+      } catch (e) {
+        // Proceed normally if check fails
+      }
+
       // 2. Fetch fresh data from APIs in the background
       const [pullShark, starstruck, galaxyBrain, yolo, sponsor] = await Promise.all([
         fetch(`/api/github/badges/pull-shark?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0 }).catch(() => ({ count: 0 })),
@@ -98,6 +110,24 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
     fetchAll();
     return () => { active = false; };
   }, [username, isOwnProfile, cacheKey]);
+
+  if (notFound) {
+    return (
+      <div style={{
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        padding: "64px 20px", background: "var(--gt-card)", border: "1px dashed var(--gt-border-strong)",
+        borderRadius: 14, textAlign: "center", gap: 16
+      }}>
+        <div style={{ fontSize: 48, filter: "grayscale(100%) opacity(50%)" }}>👻</div>
+        <div>
+          <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600, color: "var(--gt-text)" }}>User Not Found</h2>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--gt-text-muted)", maxWidth: 340 }}>
+            We couldn't find a GitHub user with the handle <strong>@{username}</strong>. They might have changed their username or deleted their account.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!results) {
     return (
