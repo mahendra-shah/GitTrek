@@ -38,8 +38,11 @@ export function Header({ children }: { children?: React.ReactNode }) {
 
         {/* Logo + name */}
         <div className="flex items-center gap-2.5" style={{ flexShrink: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-light.svg" alt="GitTrek" style={{ height: 42, width: 42, borderRadius: 10 }} />
+          <picture>
+            <source srcSet="/logo-light.svg" media="(prefers-color-scheme: dark)" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-dark.svg" alt="GitTrek" style={{ height: 42, width: 42, borderRadius: 10 }} />
+          </picture>
           <h1 style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em", margin: 0 }}>
             GitTrek
           </h1>

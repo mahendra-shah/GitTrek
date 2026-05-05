@@ -461,7 +461,9 @@ function HomeContent() {
                 </button>
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
-                  {searchQuery.isFetching ? (
+                  {!mounted ? (
+                    "Run a search"
+                  ) : searchQuery.isFetching ? (
                     <span style={{ color: "var(--gt-primary)" }}>Loading via GraphQL…</span>
                   ) : searchQuery.data ? (
                     `${searchQuery.data.total_count.toLocaleString()} ${applied.contributionType === "discussion" ? "discussions" : "issues"} found`

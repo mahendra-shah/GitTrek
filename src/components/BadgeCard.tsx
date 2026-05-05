@@ -178,7 +178,11 @@ export function BadgeCard({ badge, loopUrl }: Props) {
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(249,115,22,0.18)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--gt-primary-glow)"; }}
         >
-          {loopUrl.includes("discussions") ? "🧠 Find Discussions to answer →" : "🔍 Find issues to merge →"}
+          {loopUrl.includes("discussions") 
+            ? "🧠 Find Discussions to answer →" 
+            : badge.key === "starstruck"
+            ? "🌟 Find popular projects to join →"
+            : "🔍 Find issues to merge →"}
         </button>
       )}
 
