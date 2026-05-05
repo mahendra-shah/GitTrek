@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Space_Grotesk } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
+import { Analytics } from "@vercel/analytics/react";
 
 import Providers from "./providers";
 import { Header } from "@/components/Header";
@@ -59,6 +60,9 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
+};
+
+export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
@@ -124,6 +128,7 @@ export default function RootLayout({
             <Footer />
           </div>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

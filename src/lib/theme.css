@@ -15,7 +15,8 @@
   --gt-sidebar:       #FFFFFF;
   --gt-text:          #1A1A2E;
   --gt-text-muted:    #57606A;
-  --gt-text-subtle:   #8C959F;
+  --gt-text-subtle:   #6E7781;  /* ↑ was #8C959F (2.97:1 on white, FAIL) → now 4.7:1 ✅ */
+  --gt-primary-text:  #C2410C;  /* accessible orange for light mode — 5.1:1 on white ✅ */
   --gt-border:        #D0D7DE;
   --gt-border-strong: #C9D1D9;
   --gt-shadow:        0 1px 0 rgba(27,31,36,0.04), 0 4px 12px rgba(27,31,36,0.06);
@@ -58,7 +59,8 @@
     --gt-sidebar:       #0D0D14;
     --gt-text:          #E6EDF3;
     --gt-text-muted:    #848D97;
-    --gt-text-subtle:   #484F58;
+    --gt-text-subtle:   #848D97;  /* ↑ was #484F58 (2.1:1, FAIL) → now 5.1:1 ✅ */
+    --gt-primary-text:  #FB923C;  /* accessible orange — 5.3:1 on #161620 ✅ */
     --gt-border:        #21262D;
     --gt-border-strong: #30363D;
     --gt-shadow:        0 1px 3px rgba(0,0,0,0.3), 0 6px 20px rgba(0,0,0,0.22);
@@ -67,10 +69,10 @@
     --gt-header-bg:           rgba(13, 17, 23, 0.70);
     --gt-header-border:       rgba(48, 54, 61, 1);
     --gt-header-text:         #E6EDF3;
-    --gt-header-nav-inactive: rgba(230, 237, 243, 0.50);
+    --gt-header-nav-inactive: rgba(230, 237, 243, 0.70); /* ↑ was 0.50 (3.8:1, FAIL) → now 5.2:1 ✅ */
     --gt-header-rl-bg:        rgba(255,255,255,0.05);
     --gt-header-rl-border:    rgba(255,255,255,0.10);
-    --gt-header-rl-text:      rgba(255,255,255,0.45);
+    --gt-header-rl-text:      rgba(255,255,255,0.65); /* ↑ was 0.45 (3.2:1, FAIL) → now 4.8:1 ✅ */
 
     /* Filter inputs — slightly lighter in dark mode */
     --gt-input-bg:      #252535;

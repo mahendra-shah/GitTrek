@@ -41,7 +41,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
           <picture>
             <source srcSet="/logo-light.svg" media="(prefers-color-scheme: dark)" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-dark.svg" alt="GitTrek" style={{ height: 42, width: 42, borderRadius: 10 }} />
+            <img src="/logo-dark.svg" alt="" role="presentation" style={{ height: 42, width: 42, borderRadius: 10 }} />
           </picture>
           <span style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>
             GitTrek

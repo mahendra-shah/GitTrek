@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { getToken } from "@/lib/auth/adapter";
+import { botTokenPool } from "@/lib/github/token-pool";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const sessionToken = await getToken();
-  const token = sessionToken || process.env.GITHUB_BOT_TOKEN;
+  const guestToken = sessionToken ? null : botTokenPool.selectToken();
+  const token = sessionToken || guestToken;
 
   if (!token) {
     return NextResponse.json({ error: "No token available" }, { status: 401 });
