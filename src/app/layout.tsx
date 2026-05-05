@@ -13,12 +13,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "GitTrek — Find Open Source Issues & Track Achievements",
-    template: "%s | GitTrek",
-  },
-  description:
-    "The smartest way to find available open source issues. Track your GitHub badges (Pull Shark, Starstruck, Galaxy Brain) with live GraphQL progress tracking.",
+  title: "GitTrek — Find the Right Open Source Issue",
+  description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live. Track your GitHub badge progress. Free, open source.",
   keywords: ["github", "open source", "good first issue", "contribute to open source", "github issues", "developer tools", "pull request"],
   authors: [{ name: "Mahendra Shah", url: "https://github.com/mahendra-shah" }],
   creator: "Mahendra Shah",
@@ -27,23 +23,23 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "https://gittrek.vercel.app",
-    title: "GitTrek — The Open Source Discovery Engine",
-    description: "Detect real-time PR competition and track your GitHub achievement progress.",
+    title: "GitTrek — Find the Right Open Source Issue",
+    description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live. Free, open source.",
     siteName: "GitTrek",
     images: [
       {
-        url: "/banner.svg",
+        url: "https://gittrek.vercel.app/find-issue.png",
         width: 1200,
         height: 630,
-        alt: "GitTrek Banner",
+        alt: "GitTrek — Find Available Open Source Issues",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GitTrek — Find Available GitHub Issues",
-    description: "Stop wasting time on issues that already have PRs. Track your badge progress live.",
-    images: ["/banner.svg"],
+    title: "GitTrek — Find the Right Open Source Issue",
+    description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live.",
+    images: ["https://gittrek.vercel.app/find-issue.png"],
   },
   alternates: {
     canonical: "/",
