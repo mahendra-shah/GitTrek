@@ -43,9 +43,9 @@ export function Header({ children }: { children?: React.ReactNode }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-dark.svg" alt="GitTrek" style={{ height: 42, width: 42, borderRadius: 10 }} />
           </picture>
-          <h1 style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em", margin: 0 }}>
+          <span style={{ color: "var(--gt-primary)", fontSize: 18, fontWeight: 800, letterSpacing: "-0.01em" }}>
             GitTrek
-          </h1>
+          </span>
         </div>
 
         {/* AEO/GEO Hidden Context Block */}

@@ -59,6 +59,10 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
 };
 
 // JSON-LD Structured Data for AEO (Answer Engine Optimization)
@@ -69,7 +73,7 @@ const jsonLd = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Web",
   url: "https://gittrek.vercel.app",
-  description: "GitTrek is a search engine for developers to find open-source GitHub issues to contribute to, featuring real-time PR competition checks and advanced quality filters.",
+  description: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time, so you never waste hours on an issue someone else is already solving. Also tracks GitHub achievement badge progress.",
   offers: {
     "@type": "Offer",
     price: "0",

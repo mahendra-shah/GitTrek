@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   calculateTier,
   findFocusBadge,
@@ -17,99 +17,99 @@ type Props = {
   isOwnProfile: boolean;
 };
 
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+function readCache(key: string): BadgeResult[] | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw) as { data: BadgeResult[]; ts: number };
+    if (Date.now() - ts > CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
 
-// ── Client Component with Local Storage Caching ──────────────────────────────
+function writeCache(key: string, data: BadgeResult[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+  } catch {
+    // localStorage may be full or disabled — fail silently
+  }
+}
+
+// ── Client Component ───────────────────────────────────────────────────────────
 export function BadgeDashboard({ username, isOwnProfile }: Props) {
-  const cacheKey = `gittrek-badges-${username}`;
+  const cacheKey = `gittrek-badges-v2-${username}`;
 
   const [results, setResults] = useState<BadgeResult[] | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    // When username changes, check cache again instantly to avoid showing stale data or skeletons
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(`gittrek-badges-${username}`);
+  const fetchAll = useCallback(
+    async (forceRefresh = false) => {
+      setIsRefreshing(true);
+
+      // Check cache first (skip on force refresh)
+      if (!forceRefresh) {
+        const cached = readCache(cacheKey);
         if (cached) {
-          setResults(JSON.parse(cached));
-        } else {
-          setResults(null);
-        }
-      } catch {
-        setResults(null);
-      }
-    }
-    setNotFound(false);
-  }, [username]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function fetchAll() {
-      // 0. Verify the user actually exists first
-      try {
-        const userRes = await fetch(`/api/github/user?username=${encodeURIComponent(username)}`);
-        if (userRes.status === 404) {
-          if (active) setNotFound(true);
+          setResults(cached);
+          setIsRefreshing(false);
           return;
         }
-      } catch (e) {
-        // Proceed normally if check fails
       }
 
-      // 2. Fetch fresh data from APIs in the background
-      // 2. Fetch fresh data from APIs in the background using allSettled
-      // This ensures one badge failure doesn't block the entire dashboard
-      const settlements = await Promise.allSettled([
-        fetch(`/api/github/badges/pull-shark?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0 }),
-        fetch(`/api/github/badges/starstruck?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { maxStars: 0, repoName: "" }),
-        fetch(`/api/github/badges/galaxy-brain?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { answerCount: 0 }),
-        fetch(`/api/github/badges/yolo?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0, isEarned: false }),
-        fetch(`/api/github/badges/public-sponsor?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { isEarned: false, sponsoringCount: 0 }),
-      ]);
+      // Fetch all badge data from the unified endpoint.
+      // If the user doesn't exist, the endpoint returns 404 — no preflight check needed.
+      const res = await fetch(`/api/github/badges?username=${encodeURIComponent(username)}`);
 
-      const [pullShark, starstruck, galaxyBrain, yolo, sponsor] = settlements.map(s => 
-        s.status === "fulfilled" ? s.value : null
-      );
+      if (res.status === 404) {
+        setNotFound(true);
+        setIsRefreshing(false);
+        return;
+      }
 
-      // Fallback values for any failed fetches
-      const psData = pullShark || { count: 0 };
-      const ssData = starstruck || { maxStars: 0, repoName: "" };
-      const gbData = galaxyBrain || { answerCount: 0 };
-      const yoloData = yolo || { count: 0, isEarned: false };
-      const spData = sponsor || { isEarned: false, sponsoringCount: 0 };
+      if (!res.ok) {
+        console.warn("[BadgeDashboard] Badge fetch failed:", res.status);
+        setIsRefreshing(false);
+        return;
+      }
 
-      if (!active) return;
+      const json = await res.json();
 
       const newResults: BadgeResult[] = [
         {
-          key: "pullShark",
+          key: "pullShark" as BadgeKey,
           config: BADGE_CONFIG.pullShark,
-          tierResult: calculateTier(psData.count, BADGE_CONFIG.pullShark.tiers),
+          tierResult: calculateTier(json.pullShark?.count ?? 0, BADGE_CONFIG.pullShark.tiers),
         },
         {
-          key: "starstruck",
+          key: "starstruck" as BadgeKey,
           config: BADGE_CONFIG.starstruck,
-          tierResult: calculateTier(ssData.maxStars, BADGE_CONFIG.starstruck.tiers),
+          tierResult: calculateTier(json.starstruck?.maxStars ?? 0, BADGE_CONFIG.starstruck.tiers),
         },
         {
-          key: "galaxyBrain",
+          key: "galaxyBrain" as BadgeKey,
           config: BADGE_CONFIG.galaxyBrain,
-          tierResult: calculateTier(gbData.answerCount, BADGE_CONFIG.galaxyBrain.tiers),
+          tierResult: calculateTier(json.galaxyBrain?.answerCount ?? 0, BADGE_CONFIG.galaxyBrain.tiers),
         },
         {
-          key: "yolo",
+          key: "yolo" as BadgeKey,
           config: BADGE_CONFIG.yolo,
-          tierResult: calculateTier(yoloData.count, BADGE_CONFIG.yolo.tiers),
+          tierResult: calculateTier(json.yolo?.count ?? 0, BADGE_CONFIG.yolo.tiers),
         },
         {
-          key: "publicSponsor",
+          key: "publicSponsor" as BadgeKey,
           config: BADGE_CONFIG.publicSponsor,
-          tierResult: calculateTier(spData.sponsoringCount, BADGE_CONFIG.publicSponsor.tiers),
+          tierResult: calculateTier(json.publicSponsor?.sponsoringCount ?? 0, BADGE_CONFIG.publicSponsor.tiers),
         },
         {
-          key: "quickdraw",
+          key: "quickdraw" as BadgeKey,
           config: BADGE_CONFIG.quickdraw,
           tierResult: calculateTier(0, BADGE_CONFIG.quickdraw.tiers),
         },
@@ -117,15 +117,22 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
 
       setResults(newResults);
 
-      // 3. Cache the fresh data for next time
+      // 4. Cache for own profile only
       if (isOwnProfile) {
-        localStorage.setItem(cacheKey, JSON.stringify(newResults));
+        writeCache(cacheKey, newResults);
       }
-    }
 
-    fetchAll();
-    return () => { active = false; };
-  }, [username, isOwnProfile, cacheKey]);
+      setIsRefreshing(false);
+    },
+    [username, isOwnProfile, cacheKey]
+  );
+
+  // Reset on username change and kick off fresh fetch
+  useEffect(() => {
+    setNotFound(false);
+    setResults(null);
+    fetchAll(false);
+  }, [fetchAll]);
 
   if (notFound) {
     return (
@@ -138,7 +145,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         <div>
           <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600, color: "var(--gt-text)" }}>User Not Found</h2>
           <p style={{ margin: 0, fontSize: 14, color: "var(--gt-text-muted)", maxWidth: 340 }}>
-            We couldn't find a GitHub user with the handle <strong>@{username}</strong>. They might have changed their username or deleted their account.
+            We couldn&apos;t find a GitHub user with the handle <strong>@{username}</strong>. They might have changed their username or deleted their account.
           </p>
         </div>
       </div>
@@ -179,7 +186,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
           height={48}
           style={{ borderRadius: "50%", flexShrink: 0 }}
         />
-        <div>
+        <div style={{ flex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 700, color: "var(--gt-text)" }}>
             @{username}
           </div>
@@ -189,18 +196,45 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
             </div>
           )}
         </div>
+
+        {/* ── Refresh button ── */}
+        <button
+          id="badge-refresh-btn"
+          onClick={() => fetchAll(true)}
+          disabled={isRefreshing}
+          title="Refresh badge progress"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 14px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: isRefreshing ? "var(--gt-text-muted)" : "var(--gt-primary)",
+            background: "transparent",
+            border: "1px solid var(--gt-border)",
+            borderRadius: 8,
+            cursor: isRefreshing ? "not-allowed" : "pointer",
+            transition: "all 0.2s ease",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ display: "inline-block", animation: isRefreshing ? "gt-spin 1s linear infinite" : "none" }}>
+            ⟳
+          </span>
+          {isRefreshing ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
+
+      <style>{`
+        @keyframes gt-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
 
       {/* ── Focus coaching card ── */}
       {focus && <FocusBadge focusBadge={focus} username={username} />}
 
       {/* ── Badge grid ── */}
-      <div
-        style={{
-          columnWidth: 340,
-          columnGap: 14,
-        }}
-      >
+      <div style={{ columnWidth: 340, columnGap: 14 }}>
         {results.map((badge) => (
           <BadgeCard
             key={badge.key}
@@ -211,17 +245,16 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
       </div>
 
       {/* ── Data disclaimer ── */}
-      <p
-        style={{
-          fontSize: 12,
-          color: "var(--gt-text-subtle)",
-          textAlign: "center",
-          margin: "8px 0 0",
-          lineHeight: 1.6,
-        }}
-      >
+      <p style={{ fontSize: 12, color: "var(--gt-text-subtle)", textAlign: "center", margin: "8px 0 0", lineHeight: 1.6 }}>
         All counts are based on <strong>public activity only</strong>. Tier thresholds are community-verified,
-        not officially documented by GitHub.
+        not officially documented by GitHub. Data cached for 1 hour —{" "}
+        <button
+          onClick={() => fetchAll(true)}
+          style={{ background: "none", border: "none", color: "var(--gt-primary)", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}
+        >
+          refresh now
+        </button>
+        .
       </p>
     </div>
   );
