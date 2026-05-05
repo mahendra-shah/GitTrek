@@ -463,19 +463,17 @@ function HomeContent() {
                 </button>
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
-                  {!mounted ? (
-                    "Scanning GitHub for fresh issues…"
-                  ) : searchQuery.isFetching ? (
+                  {(!mounted || searchQuery.isFetching) ? (
                     <span style={{ color: "var(--gt-primary)", fontWeight: 600 }}>🔍 Scanning GitHub issues…</span>
                   ) : searchQuery.data ? (
                     `${searchQuery.data.total_count.toLocaleString()} ${applied.contributionType === "discussion" ? "discussions" : "issues"} found`
                     + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
-                  ) : "Scanning GitHub for fresh issues…"}
+                  ) : ""}
                 </span>
               </div>
 
-              {/* Error — distinguish between rate limit and other failures */}
-              {searchQuery.isError && (
+              {/* Error — only show after hydration to avoid SSR mismatch */}
+              {mounted && searchQuery.isError && (
                 <div style={{
                   background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)",
                   borderRadius: 10, padding: "12px 16px", marginBottom: 16,
@@ -485,8 +483,8 @@ function HomeContent() {
                 </div>
               )}
 
-              {/* Empty state */}
-              {!searchQuery.isFetching && searchQuery.data && displayedIssues.length === 0 && (
+              {/* Empty state — only show after hydration and fetch completes */}
+              {mounted && !searchQuery.isFetching && searchQuery.data && displayedIssues.length === 0 && (
                 <div style={{
                   border: "2px dashed var(--gt-border)", borderRadius: 12,
                   padding: "64px 24px", textAlign: "center",
@@ -498,7 +496,7 @@ function HomeContent() {
 
               {/* Cards */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {searchQuery.isFetching ? (
+                {(!mounted || searchQuery.isFetching) ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <div key={`skel-${i}`} style={{
                       background: "var(--gt-card)", border: "1px solid var(--gt-border)",

@@ -8,47 +8,10 @@ import {
   IssueSearchItem,
 } from "@/lib/github/search";
 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+import { botTokenPool } from "@/lib/github/token-pool";
 
 // Guest users: 10 searches per minute. Auth users are not rate limited here.
 const guestSearchLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Bot Token Pool — exhaustion-aware rotation (Fix C)
-//
-// GITHUB_BOT_TOKEN accepts a single token OR a comma-separated list:
-//   GITHUB_BOT_TOKEN="ghp_tokenA,ghp_tokenB,ghp_tokenC"
-//
-// Strategy: use each token until GitHub says it’s exhausted (real 429/403),
-// then mark it with the resetAt timestamp from the response header and move
-// to the next available token. This maximises each token’s 5k pts/hour
-// budget before switching — much better than naive time-based round-robin.
-//
-// The user is never shown a 429 unless ALL tokens are simultaneously exhausted.
-// ─────────────────────────────────────────────────────────────────────────────
-const BOT_TOKENS: string[] = (process.env.GITHUB_BOT_TOKEN ?? "")
-  .split(",")
-  .map((t) => t.trim())
-  .filter(Boolean);
-
-// Per-token exhaustion state — module-level (persists across requests on same instance)
-const tokenExhaustion = new Map<string, number>(); // token → exhaustedUntil ms
-
-/** Returns the first bot token that is not currently rate-limited, or null. */
-function selectGuestToken(): string | null {
-  const now = Date.now();
-  for (const tok of BOT_TOKENS) {
-    const until = tokenExhaustion.get(tok) ?? 0;
-    if (until <= now) return tok;
-  }
-  return null; // all tokens exhausted
-}
-
-/** Marks a token as exhausted until GitHub’s resetAt (epoch seconds) or +60s. */
-function exhaustToken(token: string, resetAtSec?: number | null): void {
-  const until = resetAtSec ? resetAtSec * 1000 : Date.now() + 60_000;
-  tokenExhaustion.set(token, until);
-  console.warn(`[token-pool] token ...${token.slice(-6)} exhausted until ${new Date(until).toISOString()}`);
-}
 
 export const dynamic = "force-dynamic";
 
@@ -423,7 +386,7 @@ export async function POST(request: Request) {
     // • Logged-in user   → their own OAuth token (5k pts/hour, isolated)
     // • Guest / no login → pick from the bot token pool (exhaustion-aware)
     const userToken = await getToken();
-    const guestToken = userToken ? null : selectGuestToken();
+    const guestToken = userToken ? null : botTokenPool.selectToken();
     const token = userToken ?? guestToken ?? undefined;
 
     // Rate-limit unauthenticated (guest) requests per-IP to protect the pool
@@ -487,8 +450,8 @@ export async function POST(request: Request) {
         // available token. Fully transparent to the user.
         // ─────────────────────────────────────────────────────────────────────
         const tokensToTry: string[] = userToken
-          ? [userToken]                          // auth users: only their own token
-          : BOT_TOKENS.filter((t) => (tokenExhaustion.get(t) ?? 0) <= Date.now()); // guests: all available bots
+          ? [userToken]
+          : botTokenPool.getAvailableTokens();
 
         if (tokensToTry.length === 0) {
           return NextResponse.json(
@@ -510,7 +473,7 @@ export async function POST(request: Request) {
           } catch (err: any) {
             if (err.message === "rate limit") {
               // Mark this specific token as exhausted and try the next one
-              if (!userToken) exhaustToken(candidateToken, err.resetAt);
+              if (!userToken) botTokenPool.exhaustToken(candidateToken, err.resetAt);
               lastRateLimitError = err;
               continue;
             }
@@ -580,7 +543,24 @@ export async function POST(request: Request) {
       cacheSet(cacheKey, responseData);
     }
 
-    return NextResponse.json(responseData);
+    const response = NextResponse.json(responseData);
+
+    // ─── Fix D: CDN Caching ──────────────────────────────────────────────────
+    // Only cache guest (unauthenticated) searches on the CDN.
+    // s-maxage=300 (5 mins) tells Vercel's CDN to cache the result.
+    // stale-while-revalidate=600 (10 mins) allows serving a stale result while 
+    // fetching a fresh one in the background.
+    if (!userToken) {
+      response.headers.set(
+        "Cache-Control",
+        "public, s-maxage=300, stale-while-revalidate=600"
+      );
+    } else {
+      // Ensure private data (auth searches) is never cached by shared CDNs
+      response.headers.set("Cache-Control", "no-store, max-age=0");
+    }
+
+    return response;
 
   } catch (error) {
     console.error("Search error:", error);
