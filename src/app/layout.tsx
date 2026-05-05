@@ -69,7 +69,7 @@ const jsonLd = {
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Web",
   url: "https://gittrek.vercel.app",
-  description: "GitTrek is a search engine for developers to find open-source GitHub issues to contribute to, featuring real-time PR competition checks and advanced quality filters.",
+  description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live. Track your GitHub badge progress. Free, open source.",
   offers: {
     "@type": "Offer",
     price: "0",
