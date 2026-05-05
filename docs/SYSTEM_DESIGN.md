@@ -1,242 +1,95 @@
-# System Design
+# System Design (Updated v2)
 
-> This document describes the data flow, API design, rate limiting strategy, and key trade-offs in GitTrek's architecture.
+> This document describes the data flow, API design, rate limiting strategy, and key trade-offs in GitTrek's high-performance search engine.
 
 ---
 
-## High-Level Data Flow
+## High-Level Data Flow (v2)
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          Browser (Client)                           │
-│                                                                     │
-│  FilterPanel ──► draft state ──► [Submit / Debounce]               │
-│                                       │                            │
-│                              applied state changes                  │
-│                                       │                            │
-│                         TanStack Query detects key change           │
-│                                       │                            │
-│                         POST /api/github/search                     │
-└───────────────────────────────────────┼─────────────────────────────┘
-                                        │
-                              (JSON body: FilterDraft)
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Next.js Route Handler (Server)                   │
-│                                                                     │
-│  1. Zod validates + sanitizes input                                 │
-│  2. Read token from HttpOnly session cookie                         │
-│  3. Branch: token present? → GraphQL | absent → REST               │
-│                                                                     │
-│  GraphQL path:                                                      │
-│  ┌─────────────────────────────────────────────┐                   │
-│  │  buildIssueSearchQuery(filters)             │                   │
-│  │    └── compile GitHub Search Query string   │                   │
-│  │                                             │                   │
-│  │  LOOP (max 3 iterations):                   │                   │
-│  │    fetch 100 issues from GitHub GraphQL     │                   │
-│  │    filterByRepoQuality(items, filters)      │                   │
-│  │    accumulate valid items                   │                   │
-│  │    advance cursor if hasNextPage            │                   │
-│  │    break if enough items OR !hasNextPage    │                   │
-│  └─────────────────────────────────────────────┘                   │
-│                                                                     │
-│  4. Return { items[], total_count, endCursor, rate_limit }          │
-└───────────────────────────────────────┼─────────────────────────────┘
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                   TanStack Query Cache (Browser)                    │
-│                                                                     │
-│  Cache key: [applied, currentPage, cursor, sort, order]             │
-│  staleTime: 15 minutes                                              │
-│  keepPreviousData: true (no flash on page change)                   │
-│                                                                     │
-│  Client-side transforms:                                            │
-│    sort/order applied to items[]                                    │
-│    hideLinkedPRs filter applied                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    A[Client UI] -->|POST filters| B[Next.js API Handler]
+    B --> C{In-Memory Cache?}
+    C -->|Hit| D[Return Result 10ms]
+    C -->|Miss| E[Token Pool Manager]
+    E -->|Select Token| F[ghp_... available?]
+    F -->|No| G[Return 429 Limit]
+    F -->|Yes| H[GitHub GraphQL API]
+    H --> I[Quality & PR Filter]
+    I --> J[Save to Cache]
+    J --> K[Return Response]
+    K -->|Set Cache-Control| L[Vercel Edge CDN]
 ```
 
 ---
 
-## API Design
+## Scalability & Rate Limiting Strategy
 
-### `POST /api/github/search`
+### The Guest Search Problem
+GitTrek's "Guest Mode" uses a shared set of Personal Access Tokens (PATs). A single PAT only provides 5,000 GraphQL points per hour, which equates to roughly 50–100 sequential-loop searches.
 
-**Why POST instead of GET?**  
-The filter payload can exceed GET URL length limits when multiple labels and languages are combined. POST also prevents filter state from leaking into browser history and server access logs.
+### Solution: Token Pool Rotation
+We implemented an **Exhaustion-Aware Token Pool** (`src/lib/github/token-pool.ts`).
+1.  **Multiple Tokens**: Supports N tokens in a comma-separated env var.
+2.  **Exhaustion Tracking**: Instead of simple round-robin, it uses a token until it receives a real `429` from GitHub.
+3.  **Cooldown Period**: When a token is exhausted, the system reads the `x-ratelimit-reset` header and puts that token on "cooldown" until exactly that timestamp.
+4.  **Transparent Retry**: If Token A fails with a rate limit error, the API handler immediately retries with Token B before responding to the user.
 
-**Request body (all fields optional with defaults):**
-
-```typescript
-{
-  text?: string;           // Free-text keyword appended to query
-  labels?: string[];       // Default: ["good first issue", "help wanted"]
-  languages?: string[];    // Default: [] (all languages)
-  zeroComments?: boolean;  // Default: false
-  noAssignee?: boolean;    // Default: true
-  issueAgeDays?: number;   // Default: 30 (days)
-  minStars?: number;       // Default: 100
-  maxStars?: number | null;// Default: null (no upper limit)
-  minForks?: number;       // Default: 50
-  maxForks?: number | null;// Default: null
-  repoPushedDays?: number; // Default: 90 (repo must have pushed within 90 days)
-  hasContributing?: boolean; // Default: false
-  org?: string;            // Default: "" (all orgs)
-  onlyOrgs?: boolean;      // Default: false
-  perPage?: number;        // Default: 20 (10 for guests)
-  cursor?: string | null;  // GraphQL pagination cursor
-  sort?: string;           // "created" | "updated" | "comments"
-  order?: string;          // "asc" | "desc"
-}
-```
-
-**Response:**
-
-```typescript
-{
-  items: IssueItem[];
-  total_count: number;      // Raw count before local quality filtering
-  filtered_out: number;     // How many items were removed by quality filter
-  hasMore: boolean;
-  endCursor: string | null;
-  warnings: string[];       // Non-fatal issues (e.g. query truncated, filters capped)
-  rate_limit: {
-    limit: number | null;
-    remaining: number | null;
-    reset: number | null;
-  } | null;
-}
-```
+### Per-IP Rate Limiting
+To prevent abuse of the token pool, guest users are also limited by a local per-IP rate limiter (10 searches/min). Auth users skip this check as they use their own private GitHub tokens.
 
 ---
 
-## GitHub API Integration
+## Caching Hierarchy (V2)
 
-### Why GraphQL over REST?
+Contrary to earlier design phases, GitTrek now employs a 3-layer caching strategy:
 
-| Concern | REST | GraphQL |
-|---|---|---|
-| Fields returned | Fixed, over-fetches | Precise, only what you declare |
-| PR detection | Requires N+1 requests | Single query via `timelineItems` |
-| Repository metadata | Separate endpoint | Inline via `... on Issue { repository { } }` |
-| Rate limit cost | 1 per request | Weighted by complexity |
+1.  **Browser Cache (TanStack Query)**:
+    - **Scope**: Local to the user's browser.
+    - **Duration**: 15 minutes.
+    - **Purpose**: Prevents re-fetching when toggling views or going back/forward in pagination.
 
-The key advantage is **co-located data**: a single GraphQL request returns the issue, its labels, its repository's star/fork count, its `CONTRIBUTING.md` presence, and its linked PR status — all in one network roundtrip.
+2.  **Server Instance Cache (In-Memory)**:
+    - **Scope**: Local to a warm Vercel function instance.
+    - **Duration**: 5 minutes.
+    - **Purpose**: If multiple users search for the same thing (e.g., "React good first issues") at the same time, only one call hits GitHub.
 
-### GraphQL Rate Limiting
-
-GitHub's GraphQL API uses a **points-based** rate limit (5,000 points/hour for authenticated users). Each query costs points based on its complexity. GitTrek optimizes this by:
-
-1. **Limiting `timelineItems` to `first: 5`** — was previously 25; each node costs rate limit points
-2. **Fetching 100 issues per batch** — reduces total API calls for a given user session
-3. **Reading `rateLimit.remaining` and `rateLimit.resetAt`** from every response
-4. **Surfacing this to the user** via the header progress bar
-
-For unauthenticated users, the REST API is used with no token. This gets 60 requests/hour (per IP) and returns far less data.
+3.  **Edge CDN Cache (Vercel Global)**:
+    - **Scope**: Global (Vercel's Edge Network).
+    - **Duration**: 5 minutes (s-maxage=300).
+    - **Purpose**: Offloads repeat guest traffic entirely. The search request never even reaches the GitTrek server.
 
 ---
 
-## OAuth 2.0 Security Design
+## API Design & Trade-offs
 
-```
-                    State param (CSRF token)
-User Browser ──────────────────────────────────────► GitHub OAuth
-     │                                                     │
-     │          Authorization Code (one-time)              │
-     │◄────────────────────────────────────────────────────┘
-     │
-     │  code + state sent to /api/auth/callback
-     ▼
-Route Handler ──────────────────────────────────────► GitHub Token Endpoint
-     │          access_token (never leaves server)         │
-     │◄────────────────────────────────────────────────────┘
-     │
-     │  Set-Cookie: session=<token>; HttpOnly; Secure; SameSite=Lax
-     ▼
-Browser stores cookie
-```
+### Single-Fetch vs Sequential Loops
+**V1 (Sequential Loops)**:
+- Logic: Fetch 100 → Filter → If < 20 results → Fetch 100 more.
+- Pros: Always returns exactly 20 items.
+- Cons: 15s latency, high rate limit cost.
 
-**Security properties:**
-- The `access_token` is stored in an `HttpOnly` cookie — JavaScript cannot read it, preventing XSS theft
-- A random `state` parameter is generated per login attempt and verified on callback — prevents CSRF
-- `SameSite=Lax` prevents cross-origin cookie submission
-- `Secure` flag ensures cookie is only sent over HTTPS in production
+**V2 (Single-Fetch - CURRENT)**:
+- Logic: Fetch 50 items (2.5x over-provision) once.
+- Pros: 3s latency, 3x cheaper on rate limits.
+- Cons: Might return 12-15 items instead of 20 on rare occasions.
+- **Decision**: Speed is the priority for launch.
+
+### Why POST for Search?
+The filter payload is complex. Using POST:
+1.  Avoids URL length limits.
+2.  Allows for cleaner `application/json` bodies.
+3.  Prevents search parameters from polluting browser history.
+4.  **Caveat**: Since it's a POST, browsers don't cache it by default. We manually enabled caching using `Cache-Control` headers, which Vercel's CDN respects even for POST requests (when configured correctly).
 
 ---
 
-## Pagination System Design
+## Error Handling v2
 
-### The Cursor Problem
-
-GitHub's GraphQL search API uses **opaque cursors** for pagination — think of them as bookmarks pointing to specific positions in the result set. You cannot derive the cursor for page 5 without fetching pages 1–4 first.
-
-```
-Page 1: cursor = null          → returns items 1-20, endCursor = "abc123"
-Page 2: cursor = "abc123"      → returns items 21-40, endCursor = "def456"
-Page 3: cursor = "def456"      → returns items 41-60, endCursor = "ghi789"
-         ↑                                                     ↑
-         stored in cursorHistory[1]                stored in cursorHistory[2]
-```
-
-### GitTrek's Solution
-
-```typescript
-const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
-```
-
-Every time the user successfully navigates to a new page, the `endCursor` from that response is stored at the next index. The pagination component calculates `maxAllowedPage = cursorHistory.length` and grays out any page beyond that boundary.
-
-Going **backwards** is always safe — the cursor for any past page is already stored.  
-Going **forward** requires fetching the current page first to obtain its `endCursor`.
-
-### New Search = Cursor Reset
-
-Every time `handleSubmit` fires (new filter applied), `cursorHistory` is strictly reset to `[null]`. This prevents the cursor from a previous search being accidentally applied to a different search's results, which would produce silent data corruption.
-
----
-
-## Client-Side Sorting Design
-
-Sorting is **not sent to the GitHub API** (except for `created`/`updated`/`comments` which the REST API supports for ordering). Instead, the entire result set returned from the server is sorted in memory on the client.
-
-**Why?**
-- GitHub's issue search API does not support `sort:stars`
-- Sorting client-side is instant (no network roundtrip)
-- It doesn't consume any API rate limit
-- The user gets immediate visual feedback
-
-**Trade-off:** Client-side sorting only applies to the current page's results. "Most stars across all 1,700 matching issues" is not possible — you're getting "most stars on this page." This is an acceptable trade-off given GitHub API limitations.
-
----
-
-## Error Handling Strategy
-
-| Error | Behavior |
+| Error | Handling Logic |
 |---|---|
-| `401 Unauthorized` | Returns empty results; user appears as guest |
-| `403 / 429 Rate Limited` | Returns `429` to client; UI shows rate limit warning |
-| GraphQL errors array | Throws first error message; caught by TanStack Query |
-| Zod validation failure | Returns `400` with error message |
-| Empty query string | Short-circuits and returns `total_count: 0` |
-| Query too long | Truncates to 240 chars, adds warning to response |
-
-Errors from the API surface in two ways:
-1. **TanStack Query `error` state** — for failed requests
-2. **`warnings[]` in successful responses** — for non-fatal degradations (query truncated, filter capped)
-
----
-
-## Scalability Considerations
-
-GitTrek is a **personal dashboard tool** — it makes GitHub API calls on behalf of individual authenticated users. This shapes several design decisions:
-
-**Rate limits are per-user**, not per-server. Each user's session token has its own 5,000 point GraphQL quota. There's no shared backend state to protect.
-
-**No caching layer needed** at the server level. TanStack Query handles client-side caching with a 15-minute stale time. The same query (same filters, same page, same cursor) won't re-hit the GitHub API within that window.
-
-**No database.** All filter state is ephemeral. Persisting saved searches or bookmarks would require adding a persistence layer (e.g., SQLite via Prisma, or a lightweight key-value store), but this is deferred to the Badge Tracker feature roadmap.
-
-**Horizontal scale is trivial** if hosted on Vercel/edge — each request is stateless. The only shared resource is the GitHub API rate limit, which belongs to the user, not the server.
+| **Rate Limit (Partial)** | Token Pool retries with next token immediately. |
+| **Rate Limit (Full)** | Returns 429 with "Sign in to GitHub" suggestion. |
+| **Hydration Mismatch** | Component gates rendering on `mounted` state; server always renders skeleton. |
+| **Zod Validation** | Returns 400 with field-specific errors. |
+| **GitHub Down** | Returns 500 with friendly "Network issue" message. |
