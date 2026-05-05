@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 
 import Providers from "./providers";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -13,24 +14,25 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: {
-    default: "GitTrek — Find the Right Open Source Issue",
+    default: "GitTrek — Find Open Source Issues & Track Achievements",
     template: "%s | GitTrek",
   },
   description:
-    "GitTrek is an advanced open source discovery engine. Find beginner-friendly GitHub issues, track your PR badges, and avoid crowded PRs with real-time competition checks.",
+    "The smartest way to find available open source issues. Track your GitHub badges (Pull Shark, Starstruck, Galaxy Brain) with live GraphQL progress tracking.",
   keywords: ["github", "open source", "good first issue", "contribute to open source", "github issues", "developer tools", "pull request"],
   authors: [{ name: "Mahendra Shah", url: "https://github.com/mahendra-shah" }],
   creator: "Mahendra Shah",
+  metadataBase: new URL("https://gittrek.vercel.app"),
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://gittrek.vercel.app",
-    title: "GitTrek — Find the Right Open Source Issue",
-    description: "Find beginner-friendly GitHub issues and track your PR badges with real-time competition checks.",
+    title: "GitTrek — The Open Source Discovery Engine",
+    description: "Detect real-time PR competition and track your GitHub achievement progress.",
     siteName: "GitTrek",
     images: [
       {
-        url: "https://gittrek.vercel.app/banner.svg",
+        url: "/banner.svg",
         width: 1200,
         height: 630,
         alt: "GitTrek Banner",
@@ -39,11 +41,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "GitTrek — Find the Right Open Source Issue",
-    description: "Find beginner-friendly GitHub issues and track your PR badges.",
-    images: ["https://gittrek.vercel.app/banner.svg"],
+    title: "GitTrek — Find Available GitHub Issues",
+    description: "Stop wasting time on issues that already have PRs. Track your badge progress live.",
+    images: ["/banner.svg"],
   },
-  metadataBase: new URL("https://gittrek.vercel.app"),
   alternates: {
     canonical: "/",
   },
@@ -60,6 +61,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 
@@ -116,9 +118,10 @@ export default function RootLayout({
               pointerEvents: "none",
               zIndex: 0,
             }} />
-            
+
             <Header />
             {children}
+            <Footer />
           </div>
         </Providers>
       </body>

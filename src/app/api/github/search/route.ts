@@ -138,11 +138,9 @@ function determinePRStatus(issueNode: any) {
       pr = node.subject;
     }
     
-    if (pr) {
-      if (pr.state === "OPEN") {
-        if (pr.isDraft) draftPrCount++;
-        else openPrCount++;
-      }
+    if (pr && pr.state === "OPEN") {
+      if (pr.isDraft) draftPrCount++;
+      else openPrCount++;
     }
   }
   

@@ -1,34 +1,18 @@
-<div align="center">
-
-<!-- <img src="public/banner.svg" alt="GitTrek" /> -->
-![GitTrek](public/banner.svg)
-
+[![GitTrek](public/banner.svg)](https://gittrek.vercel.app)
 
 # GitTrek
+### Find open source issues worth claiming. Track your GitHub badge progress.
 
-### FIND ISSUES · TRACK BADGES · CONTRIBUTE
+**→ [Live app: gittrek.vercel.app](https://gittrek.vercel.app)**
 
-**The smartest way to find beginner-friendly open source issues.**  
-Powered by GitHub's GraphQL API. Built for contributors who are serious about leveling up.
+Ever picked up an open source issue, spent an hour setting up the repo, 
+then found someone already had a PR? GitTrek checks for competing PRs 
+**before** you start. It also tracks your GitHub achievement badge 
+progress with live calculations from the GitHub GraphQL API.
 
-<br />
+Free. No setup for browsing. GitHub OAuth for full badge tracking.
 
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)](https://typescriptlang.org)
-[![GitHub GraphQL API](https://img.shields.io/badge/GitHub-GraphQL%20API-6e40c9?logo=github)](https://docs.github.com/en/graphql)
-
-</div>
-
----
-
-## What is GitTrek?
-
-GitTrek is a high-performance issue discovery platform built for open source contributors. Instead of scrolling endlessly through GitHub search results, GitTrek lets you compose precise multi-dimensional filters — stars, forks, language, label, organization, issue age, PR competition — and surfaces only the issues worth your time.
-
-It's opinionated by default and configurable by power users. Every filter you set is translated into a precise GitHub GraphQL query, fetched in batches, and refined server-side against quality thresholds that GitHub's own search API can't express.
-
----
+![Find Issue](public/find-issue.png)
 
 ## Key Features
 

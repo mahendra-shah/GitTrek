@@ -23,15 +23,7 @@ type Props = {
 export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const cacheKey = `gittrek-badges-${username}`;
 
-  const [results, setResults] = useState<BadgeResult[] | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(`gittrek-badges-${username}`);
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return null;
-  });
+  const [results, setResults] = useState<BadgeResult[] | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
@@ -67,13 +59,26 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
       }
 
       // 2. Fetch fresh data from APIs in the background
-      const [pullShark, starstruck, galaxyBrain, yolo, sponsor] = await Promise.all([
-        fetch(`/api/github/badges/pull-shark?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0 }).catch(() => ({ count: 0 })),
-        fetch(`/api/github/badges/starstruck?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { maxStars: 0, repoName: "" }).catch(() => ({ maxStars: 0, repoName: "" })),
-        fetch(`/api/github/badges/galaxy-brain?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { answerCount: 0 }).catch(() => ({ answerCount: 0 })),
-        fetch(`/api/github/badges/yolo?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0, isEarned: false }).catch(() => ({ count: 0, isEarned: false })),
-        fetch(`/api/github/badges/public-sponsor?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { isEarned: false, sponsoringCount: 0 }).catch(() => ({ isEarned: false, sponsoringCount: 0 })),
+      // 2. Fetch fresh data from APIs in the background using allSettled
+      // This ensures one badge failure doesn't block the entire dashboard
+      const settlements = await Promise.allSettled([
+        fetch(`/api/github/badges/pull-shark?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0 }),
+        fetch(`/api/github/badges/starstruck?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { maxStars: 0, repoName: "" }),
+        fetch(`/api/github/badges/galaxy-brain?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { answerCount: 0 }),
+        fetch(`/api/github/badges/yolo?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { count: 0, isEarned: false }),
+        fetch(`/api/github/badges/public-sponsor?username=${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : { isEarned: false, sponsoringCount: 0 }),
       ]);
+
+      const [pullShark, starstruck, galaxyBrain, yolo, sponsor] = settlements.map(s => 
+        s.status === "fulfilled" ? s.value : null
+      );
+
+      // Fallback values for any failed fetches
+      const psData = pullShark || { count: 0 };
+      const ssData = starstruck || { maxStars: 0, repoName: "" };
+      const gbData = galaxyBrain || { answerCount: 0 };
+      const yoloData = yolo || { count: 0, isEarned: false };
+      const spData = sponsor || { isEarned: false, sponsoringCount: 0 };
 
       if (!active) return;
 
@@ -81,27 +86,27 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         {
           key: "pullShark",
           config: BADGE_CONFIG.pullShark,
-          tierResult: calculateTier(pullShark.count, BADGE_CONFIG.pullShark.tiers),
+          tierResult: calculateTier(psData.count, BADGE_CONFIG.pullShark.tiers),
         },
         {
           key: "starstruck",
           config: BADGE_CONFIG.starstruck,
-          tierResult: calculateTier(starstruck.maxStars, BADGE_CONFIG.starstruck.tiers),
+          tierResult: calculateTier(ssData.maxStars, BADGE_CONFIG.starstruck.tiers),
         },
         {
           key: "galaxyBrain",
           config: BADGE_CONFIG.galaxyBrain,
-          tierResult: calculateTier(galaxyBrain.answerCount, BADGE_CONFIG.galaxyBrain.tiers),
+          tierResult: calculateTier(gbData.answerCount, BADGE_CONFIG.galaxyBrain.tiers),
         },
         {
           key: "yolo",
           config: BADGE_CONFIG.yolo,
-          tierResult: calculateTier(yolo.count, BADGE_CONFIG.yolo.tiers),
+          tierResult: calculateTier(yoloData.count, BADGE_CONFIG.yolo.tiers),
         },
         {
           key: "publicSponsor",
           config: BADGE_CONFIG.publicSponsor,
-          tierResult: calculateTier(sponsor.sponsoringCount, BADGE_CONFIG.publicSponsor.tiers),
+          tierResult: calculateTier(spData.sponsoringCount, BADGE_CONFIG.publicSponsor.tiers),
         },
         {
           key: "quickdraw",

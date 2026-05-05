@@ -94,7 +94,11 @@ export function FocusBadge({ focusBadge, username }: Props) {
           (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
         }}
       >
-        {config.label === "Galaxy Brain" ? "Find Discussions →" : "Find Issues →"}
+        {config.label === "Galaxy Brain" 
+          ? "Find Discussions →" 
+          : config.label === "Starstruck"
+          ? "Find popular projects →"
+          : "Find Issues →"}
       </button>
     </div>
   );
