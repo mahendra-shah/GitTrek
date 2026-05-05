@@ -53,9 +53,35 @@ function ago(iso: string) {
 function PRBadge({ s }: { s: PRStatus }) {
   const base = "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold border";
   if (s.status === "guest") return (
-    <span title="Sign in to see if this issue is already being worked on by someone else" style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={base}>
-      Sign in to check
-    </span>
+    <button
+      title="Sign in with GitHub to see if this issue is already being claimed"
+      onClick={() => { window.location.href = "/api/auth/login"; }}
+      style={{
+        display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 3,
+        background: "none", border: "none", padding: 0, cursor: "pointer",
+      }}
+    >
+      {/* Blurred hint of what the badge looks like */}
+      <span
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: "var(--gt-safe-bg)", color: "var(--gt-safe-text)",
+          borderColor: "var(--gt-safe-border)",
+          filter: "blur(4px) grayscale(0.5)",
+          userSelect: "none", pointerEvents: "none",
+        }}
+        className={base}
+      >
+        ✅ Available
+      </span>
+      {/* Unlock prompt below */}
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: "var(--gt-primary)",
+        letterSpacing: "0.02em", whiteSpace: "nowrap",
+      }}>
+        🔒 Sign in to unlock
+      </span>
+    </button>
   );
   if (s.status === "checking") return (
     <span style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={`${base} animate-pulse`}>
@@ -90,7 +116,7 @@ function PRBadge({ s }: { s: PRStatus }) {
 }
 
 
-export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: IssueItem; isGuest?: boolean; appliedLabels?: string[] }) {
+export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay = 0 }: { issue: IssueItem; isGuest?: boolean; appliedLabels?: string[]; animationDelay?: number }) {
   const hasRepoData = issue.repository.stars > 0 || issue.repository.forks > 0;
   const isDiscussion = !!issue.isDiscussion;
 
@@ -111,21 +137,14 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
 
   return (
     <article
+      className="gt-card-interactive gt-result-card"
       style={{
         background: "var(--gt-card)",
         border: "1px solid var(--gt-border)",
         boxShadow: "var(--gt-shadow)",
         borderRadius: 12,
         padding: "20px 24px",
-        transition: "box-shadow 0.2s, border-color 0.2s",
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow-hover)";
-        (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border-strong)";
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow)";
-        (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border)";
+        animationDelay: `${animationDelay}s`,
       }}
     >
       <div className="flex items-start justify-between gap-4">
@@ -154,7 +173,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
           )}
 
           {/* Title */}
-          <h4 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <h3 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontWeight: 700, fontSize: 16 }}>
             {isDiscussion && (
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 5,
@@ -182,7 +201,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
             <span style={{ color: "var(--gt-text-subtle)", fontSize: 15, fontWeight: 400 }}>
               #{issue.number}
             </span>
-          </h4>
+          </h3>
 
           {/* Labels */}
           <div className="flex flex-wrap gap-2 mb-4">

@@ -27,6 +27,228 @@ a {
   outline-offset: 2px;
 }
 
+/* ── Skip link ── */
+.gt-skip-link {
+  position: absolute;
+  top: -100%;
+  left: 16px;
+  padding: 8px 16px;
+  background: var(--gt-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 0 0 8px 8px;
+  z-index: 10000;
+  text-decoration: none;
+  transition: top 0.15s;
+}
+.gt-skip-link:focus {
+  top: 0;
+}
+
+/* ── Responsive header ── */
+.gt-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: nowrap;
+  height: 60px;
+}
+
+.gt-header-nav {
+  display: flex;
+}
+
+.gt-header-rl {
+  display: flex;
+}
+
+@media (max-width: 640px) {
+  /* Allow items to wrap into two rows */
+  .gt-header-inner {
+    flex-wrap: wrap;
+    gap: 0;
+    height: auto;
+    padding: 8px 0;
+    align-items: center;
+  }
+  /* Logo stays row 1, left */
+  .gt-header-logo {
+    order: 1;
+  }
+  /* Auth jumps to row 1, right (via margin-left: auto) */
+  .gt-header-auth {
+    order: 2;
+    margin-left: auto;
+  }
+  /* Nav wraps to row 2, full width, centered */
+  .gt-header-nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    padding: 6px 0;
+    margin-top: 8px;
+    border-top: 1px solid var(--gt-border);
+  }
+  /* Spacer collapses so it doesn't push layout */
+  .gt-header-spacer {
+    display: none;
+  }
+  /* Rate limit hidden on narrow screens */
+  .gt-header-rl {
+    display: none;
+  }
+}
+
+/* ── Responsive layout ── */
+.gt-layout-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 32px;
+}
+
+.gt-filter-inner {
+  position: sticky;
+  top: 80px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+
+.gt-mobile-filter-btn {
+  display: none;
+}
+
+/* Mobile filter drawer overlay */
+.gt-filter-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+.gt-filter-overlay.open {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .gt-layout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gt-filter-aside {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px;
+    align-items: center;
+    justify-content: flex-start;
+  }
+  .gt-filter-aside.open {
+    display: flex;
+  }
+
+  .gt-filter-inner {
+    position: relative;
+    top: auto;
+    max-height: none;
+    overflow-y: visible;
+    width: 100%;
+    max-width: 400px;
+    margin-top: 8px;
+  }
+
+  .gt-mobile-filter-btn {
+    display: inline-flex;
+  }
+}
+
+/* ── CSS hover/focus utilities (replaces JS onMouseEnter/Leave) ── */
+.gt-card-interactive {
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.gt-card-interactive:hover {
+  box-shadow: var(--gt-shadow-hover) !important;
+  border-color: var(--gt-border-strong) !important;
+}
+.gt-card-interactive:focus-within {
+  box-shadow: var(--gt-shadow-hover) !important;
+  border-color: var(--gt-border-strong) !important;
+}
+
+.gt-btn-ghost {
+  transition: background 0.15s;
+}
+.gt-btn-ghost:hover {
+  background: var(--gt-card-hover) !important;
+}
+
+.gt-mission-btn {
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.gt-mission-btn:hover {
+  border-color: var(--gt-primary) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15) !important;
+}
+.gt-mission-btn:focus-visible {
+  border-color: var(--gt-primary) !important;
+  outline: 2px solid var(--gt-primary);
+  outline-offset: 2px;
+}
+
+.gt-loop-cta {
+  transition: background 0.15s;
+}
+.gt-loop-cta:hover {
+  background: rgba(249,115,22,0.18) !important;
+}
+.gt-loop-cta:focus-visible {
+  background: rgba(249,115,22,0.18) !important;
+}
+
+.gt-share-btn {
+  transition: background 0.2s;
+}
+.gt-share-btn:hover {
+  background: var(--gt-card-hover) !important;
+}
+
+.gt-focus-cta {
+  transition: background 0.15s, transform 0.1s;
+}
+.gt-focus-cta:hover {
+  background: var(--gt-primary-dark) !important;
+  transform: translateY(-1px);
+}
+.gt-focus-cta:focus-visible {
+  background: var(--gt-primary-dark) !important;
+  outline: 2px solid var(--gt-primary);
+  outline-offset: 2px;
+}
+
+/* Card staggered entrance animation */
+.gt-result-card {
+  animation: gt-card-enter 0.35s ease both;
+}
+
+/* Badge staggered entrance */
+.gt-badge-card-animated {
+  animation: gt-badge-enter 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+/* Hide share modal preview on very short screens to keep share buttons reachable */
+@media (max-height: 600px) {
+  .gt-share-modal-preview {
+    display: none;
+  }
+}
+
 /* rc-slider theme override */
 .rc-slider-track {
   background-color: var(--gt-primary) !important;

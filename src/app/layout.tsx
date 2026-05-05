@@ -69,15 +69,26 @@ export const viewport: Viewport = {
   ],
 };
 
-// JSON-LD Structured Data for AEO (Answer Engine Optimization)
+// JSON-LD Structured Data for AEO/GEO (Answer Engine + Generative Engine Optimization)
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "GitTrek",
   applicationCategory: "DeveloperApplication",
+  applicationSubCategory: "Open Source Contribution Tool",
   operatingSystem: "Web",
   url: "https://gittrek.vercel.app",
-  description: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time, so you never waste hours on an issue someone else is already solving. Also tracks GitHub achievement badge progress.",
+  description: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time — so you never waste hours on an issue someone else is already solving. Also tracks GitHub achievement badge progress (Pull Shark, Galaxy Brain, Starstruck, YOLO, Public Sponsor).",
+  featureList: [
+    "Real-time PR competition detection on GitHub issues",
+    "GitHub achievement badge progress tracking (Pull Shark, Galaxy Brain, Starstruck, YOLO, Public Sponsor)",
+    "Advanced repository quality filters (stars, forks, maintainer activity, contributing guidelines)",
+    "1-click Quick Missions for badge-hunting (Pull Shark, Galaxy Brain, Pair Extraordinaire)",
+    "Public badge profile pages — look up any GitHub username",
+    "GitHub Discussions search for Galaxy Brain badge",
+    "Guest mode with no sign-in required for basic search",
+  ],
+  screenshot: "https://gittrek.vercel.app/og-image.png",
   offers: {
     "@type": "Offer",
     price: "0",
@@ -107,6 +118,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full">
+        <a href="#main-content" className="gt-skip-link">Skip to main content</a>
         <Providers>
           <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
             {/* Ambient Background Glow (Foggy Glass Lighting) */}

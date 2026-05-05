@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import Link from "next/link";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { IssueCard, IssueItem } from "@/components/IssueCard";
 import { FilterPanel, FilterDraft } from "@/components/FilterPanel";
@@ -61,26 +60,35 @@ function HomeContent() {
 
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    // Clear URL parameters immediately after initial hydration
-    // so they don't stay in the browser URL bar (User request)
-    if (searchParams && searchParams.toString().length > 0) {
-      window.history.replaceState(null, "", "/");
-    }
-  }, [searchParams]);
-
-  // Parse initial state from URL if present (supports "The Loop" CTAs)
+  // Parse initial state from URL if present (supports "The Loop" CTAs and deep links)
   const [draft, setDraft] = useState<FilterDraft>(() => {
     if (!searchParams) return DEFAULT;
     const fromUrl: FilterDraft = { ...DEFAULT };
     if (searchParams.has("labels")) fromUrl.labels = searchParams.get("labels")!.split(",");
     if (searchParams.has("noAssignee")) fromUrl.noAssignee = searchParams.get("noAssignee") === "true";
     if (searchParams.has("zeroComments")) fromUrl.zeroComments = searchParams.get("zeroComments") === "true";
-    if (searchParams.has("discussions")) fromUrl.text = "is:discussion"; // Galaxy brain map
+    if (searchParams.has("discussions")) fromUrl.contributionType = "discussion";
+    if (searchParams.has("text")) fromUrl.text = searchParams.get("text")!;
     return fromUrl;
   });
   
   const [hideLinkedPRs, setHideLinkedPRs] = useState(() => searchParams?.get("hideLinkedPRs") === "true");
+
+  // Mobile filter drawer state
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  // Sync filter state to URL for shareability
+  const syncUrlFromDraft = useCallback((d: FilterDraft, hidePRs: boolean) => {
+    const params = new URLSearchParams();
+    if (d.text) params.set("text", d.text);
+    if (d.labels.length && JSON.stringify(d.labels) !== JSON.stringify(DEFAULT.labels)) params.set("labels", d.labels.join(","));
+    if (d.noAssignee !== DEFAULT.noAssignee) params.set("noAssignee", String(d.noAssignee));
+    if (d.zeroComments) params.set("zeroComments", "true");
+    if (d.contributionType === "discussion") params.set("discussions", "true");
+    if (hidePRs) params.set("hideLinkedPRs", "true");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+  }, []);
 
 
 
@@ -144,9 +152,11 @@ function HomeContent() {
       setApplied(p => ({ ...p, text: draft.text }));
       setCurrentPage(1);
       setCursorHistory([null]);
+      syncUrlFromDraft({ ...draft }, hideLinkedPRs);
     }, 500);
     return () => clearTimeout(timer);
-  }, [draft.text, applied.text]);
+  }, [draft.text, applied.text, draft, hideLinkedPRs, syncUrlFromDraft]);
+
   const resetPagination = () => {
     setCurrentPage(1);
     setCursorHistory([null]);
@@ -156,6 +166,8 @@ function HomeContent() {
     e.preventDefault();
     setApplied({ ...draft });
     resetPagination();
+    syncUrlFromDraft(draft, hideLinkedPRs);
+    setFilterOpen(false);
   };
 
   const handlePageChange = (page: number) => {
@@ -207,7 +219,7 @@ function HomeContent() {
       </div>
 
       {/* ── BODY ── */}
-      <main style={{ flex: 1, maxWidth: 1280, margin: "0 auto", width: "100%", padding: "32px 24px" }}>
+      <main id="main-content" style={{ flex: 1, maxWidth: 1280, margin: "0 auto", width: "100%", padding: "32px 24px" }}>
 
         {isGuest && (
           <div style={{
@@ -230,6 +242,23 @@ function HomeContent() {
         )}
 
 
+        {/* ── PAGE HEADLINE ── */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{
+            fontSize: "clamp(1.25rem, 3vw, 1.625rem)",
+            fontWeight: 800,
+            color: "var(--gt-text)",
+            letterSpacing: "-0.02em",
+            margin: "0 0 6px",
+            lineHeight: 1.2,
+          }}>
+            Don&apos;t get sniped on GitHub issues.
+          </h1>
+          <p style={{ fontSize: 14, color: "var(--gt-text-muted)", margin: 0, lineHeight: 1.6 }}>
+            GitTrek shows which issues already have competing PRs — before you invest hours.
+          </p>
+        </div>
+
         {/* ── 🎯 MISSIONS BAR ── */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -246,7 +275,7 @@ function HomeContent() {
                 desc: "Unanswered Q&A discussions",
                 onClick: () => {
                   const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
-                  setDraft(m); setApplied(m); resetPagination();
+                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
                 },
               },
               {
@@ -255,7 +284,7 @@ function HomeContent() {
                 desc: "Issues asking for co-authors",
                 onClick: () => {
                   const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
-                  setDraft(m); setApplied(m); resetPagination();
+                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
                 },
               },
               {
@@ -264,7 +293,7 @@ function HomeContent() {
                 desc: "Zero-comment, fresh issues",
                 onClick: () => {
                   const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
-                  setDraft(m); setApplied(m); resetPagination();
+                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
                 },
               },
             ].map(mission => (
@@ -273,25 +302,16 @@ function HomeContent() {
                 id={`mission-${mission.id}`}
                 type="button"
                 onClick={mission.onClick}
-                className="gt-mission-shimmer"
+                aria-label={`${mission.label}: ${mission.desc}`}
+                className="gt-mission-shimmer gt-mission-btn"
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   padding: "9px 14px", borderRadius: 12,
                   border: "1px solid var(--gt-border)",
+                  background: "var(--gt-card)",
                   cursor: "pointer", textAlign: "left",
                   boxShadow: "var(--gt-shadow)",
-                  transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
                   position: "relative", overflow: "hidden",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-primary)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow)";
                 }}
               >
                 <span style={{ fontSize: 22 }}>{mission.emoji}</span>
@@ -311,33 +331,75 @@ function HomeContent() {
           </div>
         </div>
 
-        {/* ── FIND ISSUES TAB ── */}
-        {(
-          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32 }}>
-            {/* Sidebar */}
-            <aside>
-              <div style={{
-                position: "sticky", top: 80,
+        {/* Mobile filter drawer overlay */}
+        <div
+          className={`gt-filter-overlay${filterOpen ? " open" : ""}`}
+          onClick={() => setFilterOpen(false)}
+          aria-hidden="true"
+        />
+
+        {/* ── FIND ISSUES LAYOUT ── */}
+        <div className="gt-layout-grid">
+          {/* Sidebar (desktop sticky / mobile drawer) */}
+          <aside className={`gt-filter-aside${filterOpen ? " open" : ""}`}>
+            <div
+              className="gt-filter-inner"
+              style={{
                 background: "var(--gt-sidebar)", border: "1px solid var(--gt-border)",
                 borderRadius: 16, padding: 24,
                 boxShadow: "var(--gt-shadow)",
-                maxHeight: "calc(100vh - 100px)", overflowY: "auto"
-              }}>
-                <FilterPanel
-                  draft={draft}
-                  setDraft={setDraft}
-                  hideLinkedPRs={hideLinkedPRs}
-                  setHideLinkedPRs={setHideLinkedPRs}
-                  isGuest={isGuest}
-                  onSubmit={handleSubmit}
-                  isSearching={searchQuery.isFetching}
-                />
+              }}
+            >
+              {/* Mobile close button */}
+              <div className="gt-mobile-filter-btn" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
+                <button
+                  onClick={() => setFilterOpen(false)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--gt-text-muted)", display: "flex", alignItems: "center",
+                    gap: 6, fontSize: 13, fontWeight: 600, padding: "4px 8px",
+                  }}
+                  aria-label="Close filters"
+                >
+                  <X size={16} /> Close
+                </button>
               </div>
-            </aside>
+              <FilterPanel
+                draft={draft}
+                setDraft={setDraft}
+                hideLinkedPRs={hideLinkedPRs}
+                setHideLinkedPRs={(v) => {
+                  setHideLinkedPRs(v);
+                  syncUrlFromDraft(draft, v);
+                }}
+                isGuest={isGuest}
+                onSubmit={handleSubmit}
+                isSearching={searchQuery.isFetching}
+              />
+            </div>
+          </aside>
 
             {/* Results */}
             <section>
-              {/* Results header */}
+              {/* Mobile filter toggle — only visible on mobile */}
+              <div className="gt-mobile-filter-btn" style={{ marginBottom: 12 }}>
+                <button
+                  onClick={() => setFilterOpen(true)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "9px 16px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+                    background: "var(--gt-card)", border: "1px solid var(--gt-border)",
+                    color: "var(--gt-text)", cursor: "pointer",
+                    boxShadow: "var(--gt-shadow)",
+                  }}
+                  aria-expanded={filterOpen}
+                  aria-controls="filter-panel"
+                >
+                  <SlidersHorizontal size={15} />
+                  Filters
+                </button>
+              </div>
+
               {/* Contribution Type Toggle with Elastic Spring Effect */}
               <div style={{ display: "flex", marginBottom: 16 }}>
                 <div style={{
@@ -528,7 +590,13 @@ function HomeContent() {
                   ))
                 ) : displayedIssues.length > 0 ? (
                   displayedIssues.map((issue, idx) => (
-                    <IssueCard key={`${issue.id}-${issue.number}-${idx}`} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
+                    <IssueCard
+                      key={`${issue.id}-${issue.number}-${idx}`}
+                      issue={issue}
+                      isGuest={isGuest}
+                      appliedLabels={applied.labels}
+                      animationDelay={idx * 0.05}
+                    />
                   ))
                 ) : null}
               </div>
@@ -542,7 +610,6 @@ function HomeContent() {
               />
             </section>
           </div>
-        )}
       </main>
     </>
   );

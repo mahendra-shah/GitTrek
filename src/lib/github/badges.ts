@@ -33,6 +33,8 @@ export type BadgeConfigEntry = {
   image?: string;
   /** The specific action noun shown in the Focus coaching text, e.g. "merged PRs", "stars" */
   contributionNoun: string;
+  /** Short description shown on the badge card below the title. */
+  description: string;
   /** Why this calculation might be inaccurate (shown in the "What breaks this?" section). */
   caveat: string;
 };
@@ -46,6 +48,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "🦈",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/pull-shark-default.png",
     contributionNoun: "merged PRs",
+    description: "Earned by merging pull requests into public repositories. Each merged PR counts toward unlocking higher tiers.",
     caveat: "Only counts public merged PRs. Private repository contributions are not visible to the API.",
   },
   starstruck: {
@@ -56,6 +59,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "🌟",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/starstruck-default.png",
     contributionNoun: "stars on your best repo",
+    description: "Awarded when a repository you own accumulates stars. Based on your single highest-starred public repository.",
     caveat: "Awarded per repository, not total stars. This tool checks your highest-starred public repo only. Private repo stars are not counted.",
   },
   pairExtraordinaire: {
@@ -66,6 +70,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "👥",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/pair-extraordinaire-default.png",
     contributionNoun: "co-authored PRs",
+    description: "Earned by co-authoring pull requests using the 'Co-authored-by:' commit trailer. Encourages collaborative development.",
     caveat: "Only counts PRs with 'Co-authored-by:' in the commit message. Alternative co-authoring formats may cause false negatives.",
   },
   galaxyBrain: {
@@ -76,6 +81,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "🧠",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/galaxy-brain-default.png",
     contributionNoun: "accepted answers",
+    description: "Awarded for having answers marked as accepted in GitHub Discussions. Answer Q&A threads in public repositories to earn it.",
     caveat: "Only counts accepted answers in public GitHub Discussions. Private repository discussions are not accessible.",
   },
   yolo: {
@@ -86,6 +92,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "🤞",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/yolo-default.png",
     contributionNoun: "no-review merges",
+    description: "Earned by merging a pull request without a code review. Intended as a fun badge — best used on personal or demo projects.",
     caveat: "GitHub's exact criteria for 'merged without review' is not publicly documented. This is an estimate based on PRs with no review events.",
   },
   quickdraw: {
@@ -96,6 +103,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "⚡",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/quickdraw-default.png",
     contributionNoun: "quick contributions",
+    description: "Awarded for closing an issue or merging a PR within 5 minutes of it being opened. Cannot be tracked via public API.",
     caveat: "Cannot be tracked via the GitHub API. Requires scanning timestamps of all PRs and issues, which exceeds practical API rate limits.",
   },
   publicSponsor: {
@@ -106,6 +114,7 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
     emoji: "💖",
     image: "https://raw.githubusercontent.com/Schweinepriester/github-profile-achievements/main/images/public-sponsor-default.png",
     contributionNoun: "public sponsorships",
+    description: "Earned by publicly sponsoring an open source developer or project through GitHub Sponsors.",
     caveat: "Only detects public sponsorships. Private sponsorships are not visible.",
   },
 } as const;

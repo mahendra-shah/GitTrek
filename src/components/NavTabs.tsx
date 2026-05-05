@@ -65,8 +65,6 @@ export function NavTabs() {
               textAlign: "center",
               position: "relative",
             }}
-            onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
-            onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
             aria-current={isActive ? "page" : undefined}
           >
             {label}
