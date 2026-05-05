@@ -13,11 +13,13 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   const params = await searchParams;
   const user = params.user;
   return {
-    title: user ? `${user}'s GitHub Badges` : "My GitHub Badges",
+    title: user ? `${user}'s GitHub Badges` : "My GitHub Badges — GitTrek",
     description: user
       ? `Track ${user}'s progress toward GitHub achievement badges — Pull Shark, Starstruck, Galaxy Brain and more.`
       : "Track your progress toward GitHub achievement badges. See exactly how many more PRs, stars, and discussion answers you need.",
     alternates: { canonical: user ? `/badges?user=${user}` : "/badges" },
+    // Prevent indexing of user-specific pages to avoid thin-content index bloat
+    robots: user ? { index: false, follow: false } : undefined,
   };
 }
 

@@ -7,6 +7,10 @@ import {
   filterByRepoQuality,
   IssueSearchItem,
 } from "@/lib/github/search";
+import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
+
+// Guest users: 10 searches per minute. Auth users are not rate limited here.
+const guestSearchLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
 
 export const dynamic = "force-dynamic";
 
@@ -121,9 +125,6 @@ const GRAPHQL_DISCUSSION_QUERY = `
     rateLimit { limit cost remaining resetAt }
   }
 `;
-
-// Keep old name as alias for backwards-compat
-const GRAPHQL_QUERY = GRAPHQL_ISSUE_QUERY;
 
 function determinePRStatus(issueNode: any) {
   let openPrCount = 0;
@@ -335,6 +336,18 @@ export async function POST(request: Request) {
 
     const filters = parsed.data;
     const token = (await getToken()) || process.env.GITHUB_BOT_TOKEN;
+
+    // Rate-limit unauthenticated (guest) requests to protect the shared bot token
+    if (!token || token === process.env.GITHUB_BOT_TOKEN) {
+      const ip = getClientIp(request);
+      const limit = guestSearchLimiter.check(ip);
+      if (!limit.allowed) {
+        return NextResponse.json(
+          { error: "Rate limit exceeded. Sign in for unlimited searches." },
+          { status: 429, headers: { "Retry-After": String(Math.ceil((limit.resetAt - Date.now()) / 1000)) } }
+        );
+      }
+    }
     
     // Guest mode uses REST and limits perPage to 10
     if (!token && filters.perPage > 10) {

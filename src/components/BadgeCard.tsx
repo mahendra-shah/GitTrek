@@ -1,7 +1,6 @@
 "use client";
 
 import { type BadgeResult, TIER_LABELS } from "@/lib/github/badges";
-import { useRouter } from "next/navigation";
 
 type Props = {
   badge: BadgeResult;
@@ -24,7 +23,6 @@ function fmtNum(n: number) {
 }
 
 export function BadgeCard({ badge, loopUrl }: Props) {
-  const router = useRouter();
   const { config, tierResult } = badge;
   const { tier, tierLabel, current, nextThreshold, needed, percentToNext, isMaxed } = tierResult;
   const colors = TIER_COLORS[tier];
@@ -69,7 +67,7 @@ export function BadgeCard({ badge, loopUrl }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {config.image ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={config.image} alt={config.label} width={42} height={42} style={{ flexShrink: 0, filter: isNotTrackable ? "grayscale(100%)" : "none" }} />
+            <img src={config.image} alt={config.label} width={42} height={42} loading="lazy" style={{ flexShrink: 0, filter: isNotTrackable ? "grayscale(100%)" : "none" }} />
           ) : (
             <span style={{ fontSize: 28 }} role="img" aria-label={config.label}>
               {config.emoji}
@@ -160,9 +158,10 @@ export function BadgeCard({ badge, loopUrl }: Props) {
 
       {/* ── The Loop CTA ── */}
       {loopUrl && !isMaxed && !isNotTrackable && (
-        <button
-          onClick={() => router.push(loopUrl)}
+        <a
+          href={loopUrl}
           style={{
+            display: "block",
             background: "var(--gt-primary-glow)",
             border: "1px solid rgba(249,115,22,0.25)",
             borderRadius: 8,
@@ -170,10 +169,9 @@ export function BadgeCard({ badge, loopUrl }: Props) {
             fontSize: 13,
             fontWeight: 600,
             color: "var(--gt-primary)",
-            cursor: "pointer",
+            textDecoration: "none",
             textAlign: "left",
             transition: "background 0.15s",
-            width: "100%",
           }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(249,115,22,0.18)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--gt-primary-glow)"; }}
@@ -183,7 +181,7 @@ export function BadgeCard({ badge, loopUrl }: Props) {
             : badge.key === "starstruck"
             ? "🌟 Find popular projects to join →"
             : "🔍 Find issues to merge →"}
-        </button>
+        </a>
       )}
 
       {/* ── "What breaks this?" honesty layer ── */}
