@@ -61,6 +61,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 
@@ -117,7 +118,7 @@ export default function RootLayout({
               pointerEvents: "none",
               zIndex: 0,
             }} />
-            
+
             <Header />
             {children}
             <Footer />
