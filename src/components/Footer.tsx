@@ -26,11 +26,11 @@ export function Footer() {
               <picture>
                 <source srcSet="/logo-light.svg" media="(prefers-color-scheme: dark)" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo-dark.svg" alt="GitTrek" style={{ height: 48, width: 48, borderRadius: 10 }} />
+                <img src="/logo-dark.svg" alt="" role="presentation" style={{ height: 48, width: 48, borderRadius: 10 }} />
               </picture>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <span style={{ color: "var(--gt-primary)", fontWeight: 800, fontSize: 22, letterSpacing: "-0.02em", lineHeight: 1 }}>GitTrek</span>
-                <span style={{ color: "var(--gt-text-subtle)", fontSize: 9, fontWeight: 700, letterSpacing: "0.1em", marginTop: 4 }}>CLAIM. TRACK. GROW.</span>
+                <span style={{ color: "var(--gt-text-subtle)", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", marginTop: 4 }}>CLAIM. TRACK. GROW.</span>
               </div>
             </div>
             <p style={{ color: "var(--gt-text-muted)", fontSize: 13, lineHeight: 1.5, maxWidth: 300 }}>

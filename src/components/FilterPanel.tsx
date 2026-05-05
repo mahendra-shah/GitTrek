@@ -4,7 +4,7 @@ import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { TagInput } from "./TagInput";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 
 export type FilterDraft = {
   text: string;
@@ -21,7 +21,6 @@ export type FilterDraft = {
   hasContributing: boolean;
   org?: string;
   onlyOrgs?: boolean;
-  // New fields
   contributionType: "issue" | "discussion";
   activeMaintainer: boolean;
   pairingRequested: boolean;
@@ -70,8 +69,16 @@ const inputSt: React.CSSProperties = {
   transition: "border-color 0.15s",
 };
 
-function SL({ children }: { children: React.ReactNode }) {
-  return <span style={labelSt}>{children}</span>;
+/**
+ * FieldLabel — renders a proper <label> when htmlFor is provided,
+ * otherwise a <span> for non-input section headers.
+ * This is the root fix for the "missing form label" WAVE errors.
+ */
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  if (htmlFor) {
+    return <label htmlFor={htmlFor} style={labelSt}>{children}</label>;
+  }
+  return <span style={labelSt} aria-hidden="true">{children}</span>;
 }
 
 /** Inline info tooltip */
@@ -83,12 +90,25 @@ function Tip({ text }: { text: string }) {
   );
 }
 
-function DarkInput({ value, onChange, placeholder, type = "text" }: {
-  value: string | number; onChange: (v: string) => void; placeholder?: string; type?: string;
+/**
+ * DarkInput — proper accessible input.
+ * Always provide an aria-label or ensure a <label htmlFor={id}> exists in the parent.
+ */
+function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-label": ariaLabel }: {
+  value: string | number;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  id?: string;
+  "aria-label"?: string;
 }) {
   return (
     <input
-      type={type} value={value} placeholder={placeholder}
+      id={id}
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
       onChange={e => onChange(e.target.value)}
       style={inputSt}
       onFocus={e => { e.currentTarget.style.borderColor = "var(--gt-primary)"; }}
@@ -97,17 +117,27 @@ function DarkInput({ value, onChange, placeholder, type = "text" }: {
   );
 }
 
-function DarkSelect({ value, onChange, children }: {
-  value: string | number; onChange: (v: string) => void; children: React.ReactNode;
+/**
+ * DarkSelect — proper accessible select.
+ * Always provide an id paired with a <label htmlFor={id}> in the parent.
+ */
+function DarkSelect({ value, onChange, children, id, "aria-label": ariaLabel }: {
+  value: string | number;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+  id?: string;
+  "aria-label"?: string;
 }) {
   return (
     <div style={{ position: "relative" }}>
       <select
+        id={id}
+        aria-label={ariaLabel}
         value={value}
         onChange={e => onChange(e.target.value)}
         style={{
           ...inputSt, cursor: "pointer", paddingRight: 36,
-          appearance: "none" as any,
+          appearance: "none" as const,
         }}
         onFocus={e => { e.currentTarget.style.borderColor = "var(--gt-primary)"; }}
         onBlur={e => { e.currentTarget.style.borderColor = "var(--gt-input-border)"; }}
@@ -126,10 +156,23 @@ function DarkSelect({ value, onChange, children }: {
   );
 }
 
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+/**
+ * Toggle — accessible switch button.
+ * aria-label is REQUIRED — the visual text label is a sibling, not a <label for>.
+ * Without aria-label, this is an "empty button" error in WAVE / screen readers.
+ */
+function Toggle({ checked, onChange, disabled, "aria-label": ariaLabel }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  "aria-label": string; // required — not optional
+}) {
   return (
     <button
-      type="button" role="switch" aria-checked={checked}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
       onClick={() => !disabled && onChange(!checked)}
       style={{
         width: 44, height: 24, borderRadius: 12, border: "none", flexShrink: 0,
@@ -148,13 +191,17 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
   );
 }
 
+/**
+ * RangeBlock — slider + min/max inputs.
+ * Each input gets a descriptive aria-label like "Minimum Repo Popularity (Stars)".
+ */
 function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onMaxChange }: {
   label: string; tooltip?: string; minVal: number; maxVal: number | null; maxLimit: number;
   onMinChange: (v: number) => void; onMaxChange: (v: number | null) => void;
 }) {
   return (
     <div>
-      <SL>{label}{tooltip && <Tip text={tooltip} />}</SL>
+      <FieldLabel>{label}{tooltip && <Tip text={tooltip} />}</FieldLabel>
       <div style={{ padding: "0 4px", marginBottom: 14 }}>
         <Slider
           range min={0} max={maxLimit}
@@ -170,16 +217,23 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <span style={{ ...labelSt, marginBottom: 4 }}>Min</span>
-          <DarkInput type="number" value={minVal} onChange={v => onMinChange(parseInt(v) || 0)} placeholder="0" />
+          <FieldLabel>Min</FieldLabel>
+          <DarkInput
+            type="number"
+            value={minVal}
+            onChange={v => onMinChange(parseInt(v) || 0)}
+            placeholder="0"
+            aria-label={`Minimum ${label}`}
+          />
         </div>
         <div style={{ flex: 1 }}>
-          <span style={{ ...labelSt, marginBottom: 4 }}>Max</span>
+          <FieldLabel>Max</FieldLabel>
           <DarkInput
             type="number"
             value={maxVal === null ? "" : maxVal}
             onChange={v => onMaxChange(v === "" ? null : parseInt(v) || null)}
             placeholder="Any"
+            aria-label={`Maximum ${label}`}
           />
         </div>
       </div>
@@ -187,6 +241,11 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
   );
 }
 
+/**
+ * FilterRow — a labelled toggle row.
+ * The label prop is threaded as aria-label to the Toggle button,
+ * which is the correct pattern since <label for> doesn't work with role="switch".
+ */
 function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
   label: string; sublabel?: string; tooltip?: string;
   checked: boolean; onChange: (v: boolean) => void; disabled?: boolean;
@@ -200,27 +259,31 @@ function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
         </div>
         {sublabel && <span style={{ fontSize: 11, color: "var(--gt-text-subtle)" }}>{sublabel}</span>}
       </div>
-      <Toggle checked={checked} onChange={onChange} disabled={disabled} />
+      {/* aria-label threads the visible text to the button for screen readers */}
+      <Toggle checked={checked} onChange={onChange} disabled={disabled} aria-label={label} />
     </div>
   );
 }
 
 export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
   const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
-  // Advanced section: collapsed for guests, expanded for logged-in users
   const [advancedOpen, setAdvancedOpen] = useState(!isGuest);
-  // Prevent hydration mismatch: isSearching is true on client immediately but false on SSR
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const effectiveSearching = mounted && isSearching;
 
+  // Stable, unique IDs for label/input associations (React 18+)
+  const langId = useId();
+  const ageId = useId();
+  const pushedId = useId();
+
   return (
     <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* Language */}
+      {/* Language — proper label association via htmlFor/id */}
       <div>
-        <SL>Language</SL>
-        <DarkSelect value={draft.languages[0] || ""} onChange={v => set({ languages: v ? [v] : [] })}>
+        <FieldLabel htmlFor={langId}>Language</FieldLabel>
+        <DarkSelect id={langId} value={draft.languages[0] || ""} onChange={v => set({ languages: v ? [v] : [] })}>
           <option value="">Any language</option>
           {COMMON_LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
         </DarkSelect>
@@ -228,7 +291,7 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
 
       {/* Labels */}
       <div>
-        <SL>Issue Labels<Tip text="Labels assigned to the issue on GitHub. 'good first issue' is ideal for newcomers." /></SL>
+        <FieldLabel>Issue Labels<Tip text="Labels assigned to the issue on GitHub. 'good first issue' is ideal for newcomers." /></FieldLabel>
         <div style={{
           background: "var(--gt-input-bg)", borderRadius: 8,
           border: "1px solid var(--gt-input-border)", padding: "8px 10px", minHeight: 42,
@@ -241,10 +304,10 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </div>
       </div>
 
-      {/* Issue Age */}
+      {/* Issue Age — proper label association */}
       <div>
-        <SL>Issue Age<Tip text="How recently the issue was created. Newer issues have less competition." /></SL>
-        <DarkSelect value={draft.issueAgeDays} onChange={v => set({ issueAgeDays: parseInt(v) })}>
+        <FieldLabel htmlFor={ageId}>Issue Age<Tip text="How recently the issue was created. Newer issues have less competition." /></FieldLabel>
+        <DarkSelect id={ageId} value={draft.issueAgeDays} onChange={v => set({ issueAgeDays: parseInt(v) })}>
           <option value={7}>Under 7 days</option>
           <option value={14}>Under 14 days</option>
           <option value={30}>Under 30 days</option>
@@ -253,9 +316,9 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </DarkSelect>
       </div>
 
-      {/* Basic Toggles */}
+      {/* Quick Filters */}
       <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
-        <SL>Quick Filters</SL>
+        <FieldLabel>Quick Filters</FieldLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <FilterRow
             label="No one assigned"
@@ -283,17 +346,17 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
 
       {/* Contribution Signals */}
       <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
-        <SL>Contribution Signals</SL>
+        <FieldLabel>Contribution Signals</FieldLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <FilterRow
-            label="🔥 Active maintainer"
+            label="Active maintainer"
             tooltip="Only repos pushed to in the last 30 days. Avoids 'ghost' repos where your PR would be ignored."
             sublabel="Repo updated in the last 30 days"
             checked={draft.activeMaintainer}
             onChange={v => set({ activeMaintainer: v })}
           />
           <FilterRow
-            label="🤝 Looking for pairing"
+            label="Looking for pairing"
             tooltip="Issues where someone in the comments has asked to pair program or co-author — helps earn Pair Extraordinaire badge."
             sublabel="Issues with pairing requests in comments"
             checked={draft.pairingRequested}
@@ -302,11 +365,13 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </div>
       </div>
 
-      {/* ── Advanced Filters (collapsible) ── */}
+      {/* Advanced Filters — proper aria-expanded/aria-controls disclosure pattern */}
       <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
         <button
           type="button"
           onClick={() => setAdvancedOpen(p => !p)}
+          aria-expanded={advancedOpen}
+          aria-controls="filter-advanced-content"
           style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             width: "100%", background: "none", border: "none", cursor: "pointer",
@@ -320,8 +385,7 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
         </button>
 
         {advancedOpen && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Repo Popularity */}
+          <div id="filter-advanced-content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <RangeBlock
               label="Repo Popularity (Stars)"
               tooltip="Filter by how popular the repo is. More stars usually means an active community — but fewer stars means less competition."
@@ -331,7 +395,6 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               onMaxChange={v => set({ maxStars: v })}
             />
 
-            {/* Forks */}
             <RangeBlock
               label="Repo Activity (Forks)"
               tooltip="Forks indicate how many developers are actively building on top of this project. Higher forks = more active development."
@@ -341,10 +404,10 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               onMaxChange={v => set({ maxForks: v })}
             />
 
-            {/* Repo Activity */}
+            {/* Last Code Push — proper label association */}
             <div>
-              <SL>Last Code Push<Tip text="When the repo last had code committed to it. Ensures you're not contributing to a dead project." /></SL>
-              <DarkSelect value={draft.repoPushedDays} onChange={v => set({ repoPushedDays: parseInt(v) })}>
+              <FieldLabel htmlFor={pushedId}>Last Code Push<Tip text="When the repo last had code committed to it. Ensures you're not contributing to a dead project." /></FieldLabel>
+              <DarkSelect id={pushedId} value={draft.repoPushedDays} onChange={v => set({ repoPushedDays: parseInt(v) })}>
                 <option value={30}>Within last 30 days</option>
                 <option value={90}>Within last 90 days</option>
                 <option value={180}>Within last 6 months</option>
@@ -352,7 +415,7 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               </DarkSelect>
             </div>
 
-            {/* Org filter */}
+            {/* Org filter — aria-label on input since no visible label element */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gt-text)" }}>
                 Search in Org
@@ -360,14 +423,17 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               </span>
               <input
                 type="text"
+                id="filter-org"
+                aria-label="Search in organization (e.g. vercel, microsoft)"
                 placeholder="e.g. vercel, facebook"
                 value={draft.org || ""}
                 onChange={e => set({ org: e.target.value })}
                 style={{ ...inputSt, fontSize: 13, padding: "8px 12px" }}
+                onFocus={e => { e.currentTarget.style.borderColor = "var(--gt-primary)"; }}
+                onBlur={e => { e.currentTarget.style.borderColor = "var(--gt-input-border)"; }}
               />
             </div>
 
-            {/* More toggles */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <FilterRow
                 label="Has contribution guide"

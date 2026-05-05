@@ -299,8 +299,8 @@ function HomeContent() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gt-text)" }}>{mission.label}</span>
                     <span style={{
-                      fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                      background: "var(--gt-primary-glow)", color: "var(--gt-primary)",
+                      fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                      background: "var(--gt-primary-glow)", color: "var(--gt-primary-text)",
                       border: "1px solid rgba(249,115,22,0.25)",
                     }}>{mission.badge}</span>
                   </div>
@@ -464,13 +464,13 @@ function HomeContent() {
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
                   {!mounted ? (
-                    "Run a search"
+                    "Scanning GitHub for fresh issues…"
                   ) : searchQuery.isFetching ? (
-                    <span style={{ color: "var(--gt-primary)" }}>Loading via GraphQL…</span>
+                    <span style={{ color: "var(--gt-primary)", fontWeight: 600 }}>🔍 Scanning GitHub issues…</span>
                   ) : searchQuery.data ? (
                     `${searchQuery.data.total_count.toLocaleString()} ${applied.contributionType === "discussion" ? "discussions" : "issues"} found`
                     + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
-                  ) : "Run a search"}
+                  ) : "Scanning GitHub for fresh issues…"}
                 </span>
               </div>
 
@@ -502,17 +502,29 @@ function HomeContent() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <div key={`skel-${i}`} style={{
                       background: "var(--gt-card)", border: "1px solid var(--gt-border)",
-                      borderRadius: 12, padding: "24px 20px", height: 140,
+                      borderRadius: 12, padding: "20px 20px",
                       animation: "gt-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                      display: "flex", flexDirection: "column", gap: 16
+                      animationDelay: `${i * 0.1}s`,
+                      display: "flex", flexDirection: "column", gap: 12
                     }}>
-                      <div style={{ display: "flex", gap: 12 }}>
-                        <div style={{ width: 16, height: 16, borderRadius: 8, background: "var(--gt-border)" }} />
-                        <div style={{ width: "60%", height: 16, borderRadius: 4, background: "var(--gt-border)" }} />
+                      {/* Repo line */}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--gt-border)", flexShrink: 0 }} />
+                        <div style={{ width: `${30 + (i % 3) * 12}%`, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
                       </div>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <div style={{ width: 60, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
-                        <div style={{ width: 80, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
+                      {/* Title line */}
+                      <div style={{ width: `${65 + (i % 2) * 15}%`, height: 16, borderRadius: 4, background: "var(--gt-border)" }} />
+                      {/* Label pills */}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ width: 72, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
+                        <div style={{ width: 88, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
+                        {i % 2 === 0 && <div style={{ width: 56, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />}
+                      </div>
+                      {/* Meta row */}
+                      <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
+                        <div style={{ width: 48, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
+                        <div style={{ width: 60, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
+                        <div style={{ width: 40, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
                       </div>
                     </div>
                   ))
