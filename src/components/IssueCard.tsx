@@ -155,7 +155,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
             href={issue.repository.htmlUrl}
             target="_blank"
             rel="noreferrer"
-            style={{ color: "var(--gt-text-muted)", fontSize: 12, fontWeight: 500 }}
+            style={{ color: "var(--gt-text-muted)", fontSize: 12, fontWeight: 500, wordBreak: "break-word" }}
             className="hover:underline"
           >
             {issue.repository.fullName}
@@ -212,7 +212,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
               href={issue.htmlUrl}
               target="_blank"
               rel="noreferrer"
-              style={{ color: "var(--gt-text)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}
+              style={{ color: "var(--gt-text)", fontSize: 16, fontWeight: 700, textDecoration: "none", minWidth: 0, wordBreak: "break-word" }}
               className="hover:underline"
             >
               {issue.title}

@@ -13,7 +13,6 @@ import {
   SITE_SUBLINE,
   SITE_AI_CONTEXT,
   SITE_CAREER_HOOK,
-  SITE_BADGE_MISSIONS_CALLOUT,
 } from "@/lib/site-copy";
 
 type SearchResponse = {
@@ -122,6 +121,7 @@ function HomeContent() {
   const [hideLinkedPRs, setHideLinkedPRs] = useState(() => searchParams?.get("hideLinkedPRs") === "true");
 
   const [filterOpen, setFilterOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   const syncUrlFromDraft = useCallback((d: FilterDraft, hidePRs: boolean) => {
     const params = new URLSearchParams();
@@ -299,127 +299,70 @@ function HomeContent() {
         )}
 
 
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{
-            fontSize: "clamp(1.25rem, 3vw, 1.625rem)",
-            fontWeight: 800,
-            color: "var(--gt-text)",
-            letterSpacing: "-0.02em",
-            margin: "0 0 10px",
-            lineHeight: 1.2,
-          }}>
-            Don&apos;t get sniped on GitHub issues.
-          </h1>
-          <p style={{ fontSize: 14, color: "var(--gt-text)", margin: 0, lineHeight: 1.65, fontWeight: 500 }}>
-            {SITE_SUBLINE}
-          </p>
-          <p style={{ fontSize: 14, color: "var(--gt-text-muted)", margin: "12px 0 0", lineHeight: 1.6 }}>
-            {SITE_AI_CONTEXT}
-          </p>
-          <p style={{ fontSize: 14, color: "var(--gt-text-muted)", margin: "10px 0 0", lineHeight: 1.6 }}>
-            {SITE_CAREER_HOOK}
-          </p>
-        </div>
-
-        <section aria-label="PR competition status labels" className="gt-pr-legend">
-          <div className="gt-pr-legend-card">
-            <div className="gt-pr-legend-label" style={{ color: "var(--gt-safe-text)", background: "var(--gt-safe-bg)", borderColor: "var(--gt-safe-border)" }}>
-              ✅ Available
-            </div>
-            <p className="gt-pr-legend-desc">
-              No linked open PR — safer to pick up before you clone or spend deep focus time.
+        {/* ── Hero row: h1+subline left, Quick Missions right ── */}
+        <div className="gt-hero-row">
+          <div className="gt-hero-text">
+            <h1 style={{
+              fontSize: "clamp(1.15rem, 2.6vw, 1.5rem)",
+              fontWeight: 800,
+              color: "var(--gt-text)",
+              letterSpacing: "-0.02em",
+              margin: "0 0 4px",
+              lineHeight: 1.2,
+            }}>
+              Don&apos;t get sniped on GitHub issues.
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--gt-text-muted)", margin: 0, lineHeight: 1.45 }}>
+              {SITE_SUBLINE}
             </p>
           </div>
-          <div className="gt-pr-legend-card">
-            <div className="gt-pr-legend-label" style={{ color: "var(--gt-danger-text)", background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)" }}>
-              ⚠️ Being Claimed
-            </div>
-            <p className="gt-pr-legend-desc">
-              An open pull request already references this issue — expect competition unless maintainers want duplicates.
-            </p>
-          </div>
-          <div className="gt-pr-legend-card">
-            <div className="gt-pr-legend-label" style={{ color: "var(--gt-warn-text)", background: "var(--gt-warn-bg)", border: "1px solid var(--gt-warn-border)" }}>
-              🔶 Work in Progress
-            </div>
-            <p className="gt-pr-legend-desc">
-              Draft PR or early-stage work — proceed with caution; cards may also show Branch Started for linked branches.
-            </p>
-          </div>
-        </section>
 
-        <p style={{ fontSize: 13, color: "var(--gt-text-muted)", margin: "0 0 20px", lineHeight: 1.55 }}>
-          {SITE_BADGE_MISSIONS_CALLOUT}
-        </p>
-
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gt-text-subtle)", margin: 0 }}>
-              🎯 Quick Missions
-            </h2>
-            <span style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>— 1-click preset filters for badge goals</span>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              {
-                id: "galaxy-brain",
-                emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
-                desc: "Unanswered Q&A discussions",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
-                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+          <div className="gt-hero-missions">
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--gt-text-subtle)", whiteSpace: "nowrap" }}>
+              🎯 Missions
+            </span>
+            <div className="gt-missions-strip">
+              {[
+                {
+                  id: "galaxy-brain", emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
+                  desc: "Unanswered Q&A discussions — earn Galaxy Brain badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-              {
-                id: "pair-extraordinaire",
-                emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
-                desc: "Issues asking for co-authors",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
-                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                {
+                  id: "pair-extraordinaire", emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
+                  desc: "Issues asking for co-authors — earn Pair Extraordinaire badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-              {
-                id: "pull-shark",
-                emoji: "🦈", label: "Pull Shark", badge: "Fast",
-                desc: "Zero-comment, fresh issues",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
-                  setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                {
+                  id: "pull-shark", emoji: "🦈", label: "Pull Shark", badge: "Fast",
+                  desc: "Zero-comment, fresh issues — earn Pull Shark badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-            ].map(mission => (
-              <button
-                key={mission.id}
-                id={`mission-${mission.id}`}
-                type="button"
-                onClick={mission.onClick}
-                aria-label={`${mission.label}: ${mission.desc}`}
-                className="gt-mission-shimmer gt-mission-btn"
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "9px 14px", borderRadius: 12,
-                  border: "1px solid var(--gt-border)",
-                  background: "var(--gt-card)",
-                  cursor: "pointer", textAlign: "left",
-                  boxShadow: "var(--gt-shadow)",
-                  position: "relative", overflow: "hidden",
-                }}
-              >
-                <span style={{ fontSize: 22 }}>{mission.emoji}</span>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gt-text)" }}>{mission.label}</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                      background: "var(--gt-primary-glow)", color: "var(--gt-primary-text)",
-                      border: "1px solid rgba(249,115,22,0.25)",
-                    }}>{mission.badge}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>{mission.desc}</div>
-                </div>
-              </button>
-            ))}
+              ].map(mission => (
+                <button
+                  key={mission.id}
+                  id={`mission-${mission.id}`}
+                  type="button"
+                  onClick={mission.onClick}
+                  title={mission.desc}
+                  aria-label={`${mission.label}: ${mission.desc}`}
+                  className="gt-mission-chip"
+                >
+                  <span aria-hidden="true">{mission.emoji}</span>
+                  <span>{mission.label}</span>
+                  <span className="gt-mission-badge">{mission.badge}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -439,8 +382,6 @@ function HomeContent() {
                 boxShadow: "var(--gt-shadow)",
                 display: "flex",
                 flexDirection: "column",
-                flex: 1,
-                minHeight: 0,
               }}
             >
               <div className="gt-mobile-filter-btn" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
@@ -501,9 +442,10 @@ function HomeContent() {
                   gap: 12,
                   marginBottom: 16,
                   position: "sticky",
-                  top: 0,
-                  zIndex: 2,
+                  top: 61,       // header height (60px) + 1px border
+                  zIndex: 10,    // above page content, below header (zIndex 40)
                   paddingBottom: 8,
+                  paddingTop: 8,
                   background: "var(--gt-bg)",
                 }}
               >
@@ -600,7 +542,7 @@ function HomeContent() {
                 </form>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6 }}>
                   {([
                     { val: "created", label: "Newest" },
@@ -645,7 +587,54 @@ function HomeContent() {
                     + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
                   ) : ""}
                 </span>
+                {/* PR status legend toggle */}
+                <button
+                  onClick={() => setLegendOpen(v => !v)}
+                  aria-expanded={legendOpen}
+                  title="What do the PR status badges mean?"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    background: legendOpen ? "var(--gt-primary-glow)" : "transparent",
+                    border: "1px solid var(--gt-border)",
+                    borderRadius: 20, padding: "4px 10px",
+                    fontSize: 12, fontWeight: 600,
+                    color: legendOpen ? "var(--gt-primary-text)" : "var(--gt-text-subtle)",
+                    cursor: "pointer", transition: "all 0.15s",
+                    flexShrink: 0,
+                  }}
+                >
+                  ✅ ? Legend
+                </button>
               </div>
+
+              {/* Inline PR legend — only when toggled */}
+              {legendOpen && (
+                <div style={{ marginBottom: 16 }}>
+                  <section aria-label="PR competition status labels" className="gt-pr-legend">
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-safe-text)", background: "var(--gt-safe-bg)", borderColor: "var(--gt-safe-border)" }}>
+                        ✅ Available
+                      </div>
+                      <p className="gt-pr-legend-desc">No linked open PR — safer to pick up before you spend deep focus time.</p>
+                    </div>
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-danger-text)", background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)" }}>
+                        ⚠️ Being Claimed
+                      </div>
+                      <p className="gt-pr-legend-desc">An open PR already references this — competition likely.</p>
+                    </div>
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-warn-text)", background: "var(--gt-warn-bg)", border: "1px solid var(--gt-warn-border)" }}>
+                        🔶 Work in Progress
+                      </div>
+                      <p className="gt-pr-legend-desc">Draft PR or branch started — proceed with caution.</p>
+                    </div>
+                  </section>
+                  <p style={{ fontSize: 12, color: "var(--gt-text-subtle)", margin: "10px 0 0", lineHeight: 1.5 }}>
+                    {SITE_AI_CONTEXT} {SITE_CAREER_HOOK}
+                  </p>
+                </div>
+              )}
 
               {mounted && searchQuery.isError && (
                 <div style={{

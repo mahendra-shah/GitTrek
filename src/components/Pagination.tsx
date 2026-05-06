@@ -31,7 +31,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
   };
 
   return (
-    <nav aria-label="Pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px 0", gap: 8 }}>
+    <nav aria-label="Pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", flexWrap: "wrap", columnGap: 8, rowGap: 6, padding: "32px 0" }}>
       {currentPage > 3 && (
         <button
           onClick={() => onPageChange(1)}

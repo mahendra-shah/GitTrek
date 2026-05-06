@@ -296,7 +296,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
         </button>
       </div>
 
-      <div className="gt-filter-scroll" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="gt-filter-scroll" style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1, overflowY: "auto", overflowX: "visible", minHeight: 0 }}>
 
       {/* Language — proper label association via htmlFor/id */}
       <div>
@@ -496,13 +496,19 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
 
       </div>
 
-      <div className="gt-filter-submit-wrap">
-      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+      {/* Submit row — lives outside the scroll div so it never scrolls away */}
+      <div style={{
+        flexShrink: 0,
+        paddingTop: 12,
+        paddingBottom: 4,
+        borderTop: "1px solid var(--gt-border)",
+        background: "var(--gt-sidebar)",
+      }}>
         <button
           type="submit"
           disabled={effectiveSearching || undefined}
           style={{
-            flex: 1,
+            width: "100%",
             background: "var(--gt-text)",
             color: "var(--gt-card)",
             border: "none", borderRadius: 10, padding: "13px 0",
@@ -514,7 +520,6 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
         >
           {submitLabel}
         </button>
-      </div>
       </div>
     </form>
   );

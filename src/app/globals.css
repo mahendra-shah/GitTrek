@@ -10,7 +10,12 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: clip; /* clip (not hidden) to preserve sticky positioning */
+}
+
 body {
+  overflow-x: clip;
   background-color: var(--gt-bg);
   color: var(--gt-text);
   font-family: var(--font-display), system-ui, -apple-system, sans-serif;
@@ -98,6 +103,95 @@ a {
   }
 }
 
+/* Hero row: h1+subline left, missions right — single compact strip */
+.gt-hero-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
+}
+
+.gt-hero-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.gt-hero-missions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Horizontal-scrollable chip strip (never wraps) */
+.gt-missions-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.gt-missions-strip::-webkit-scrollbar { display: none; }
+
+/* Compact chip — replaces the tall card layout */
+.gt-mission-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--gt-border);
+  background: var(--gt-card);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gt-text);
+  box-shadow: var(--gt-shadow);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.gt-mission-chip:hover {
+  border-color: var(--gt-primary) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15) !important;
+}
+.gt-mission-chip:focus-visible {
+  outline: 2px solid var(--gt-primary);
+  outline-offset: 2px;
+}
+
+.gt-mission-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--gt-primary-glow);
+  color: var(--gt-primary-text);
+  border: 1px solid rgba(249,115,22,0.25);
+}
+
+/* Mobile: hero row stacks, missions go full-width scrollable */
+@media (max-width: 640px) {
+  .gt-hero-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .gt-hero-missions {
+    width: 100%;
+    gap: 8px;
+  }
+  .gt-missions-strip {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .gt-layout-grid {
   display: grid;
   grid-template-columns: 300px 1fr;
@@ -106,13 +200,25 @@ a {
 
 .gt-filter-inner {
   position: sticky;
-  top: 80px;
-  max-height: calc(100vh - 100px);
-  overflow-y: auto;
-  overflow-x: visible;
+  top: calc(var(--gt-header-h) + 20px);
+  max-height: calc(100vh - var(--gt-header-h) - 24px);
+  /* No overflow here — scroll lives on gt-filter-scroll inside */
+  overflow: visible;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* Results sticky search bar stays just below the header. */
+.gt-results-search-bar {
+  top: var(--gt-header-h) !important;
+}
+
+@media (max-width: 640px) {
+  /* Header wraps on very small screens — push sticky bar down further. */
+  .gt-results-search-bar {
+    top: 108px !important;
+  }
 }
 
 .gt-filter-form {
@@ -124,17 +230,9 @@ a {
 
 .gt-filter-scroll {
   flex: 1;
-  min-height: auto;
-  overflow: visible;
-}
-
-.gt-filter-submit-wrap {
-  position: sticky;
-  bottom: 0;
-  margin-top: 12px;
-  padding: 12px 0 4px;
-  background: linear-gradient(180deg, transparent 0%, var(--gt-sidebar) 24%);
-  border-top: 1px solid var(--gt-border);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: visible;
 }
 
 .gt-mobile-filter-btn {
@@ -179,11 +277,18 @@ a {
   .gt-filter-inner {
     position: relative;
     top: auto;
+    /* No max-height — drawer itself scrolls */
     max-height: none;
-    overflow-y: visible;
+    overflow: visible;
     width: 100%;
     max-width: 400px;
     margin-top: 8px;
+  }
+
+  /* Drawer already scrolls via gt-filter-aside; disable inner scroller to avoid double-scroll */
+  .gt-filter-scroll {
+    overflow-y: visible;
+    flex: none;
   }
 
   .gt-mobile-filter-btn {
@@ -264,19 +369,6 @@ a {
   background: var(--gt-card-hover) !important;
 }
 
-.gt-mission-btn {
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-}
-.gt-mission-btn:hover {
-  border-color: var(--gt-primary) !important;
-  transform: translateY(-2px);
-  box-shadow: var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15) !important;
-}
-.gt-mission-btn:focus-visible {
-  border-color: var(--gt-primary) !important;
-  outline: 2px solid var(--gt-primary);
-  outline-offset: 2px;
-}
 
 /* Homepage PR competition legend (aligns with IssueCard badges) */
 .gt-pr-legend {
