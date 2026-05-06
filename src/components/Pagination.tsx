@@ -28,18 +28,16 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
     border: "1px solid var(--gt-border)", borderRadius: 8,
     cursor: "pointer", color: "var(--gt-text)",
     fontSize: 14, fontWeight: 600,
-    transition: "background 0.15s, border-color 0.15s, color 0.15s",
   };
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px 0", gap: 8 }}>
+    <nav aria-label="Pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", flexWrap: "wrap", columnGap: 8, rowGap: 6, padding: "32px 0" }}>
       {currentPage > 3 && (
         <button
           onClick={() => onPageChange(1)}
-          style={{ ...btnBase, background: "var(--gt-card)", marginRight: 8 }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--gt-card-hover)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--gt-card)"; }}
-          title="Go to first page"
+          className="gt-btn-ghost"
+          style={{ ...btnBase, marginRight: 8 }}
+          aria-label="Go to first page"
         >
           First
         </button>
@@ -48,13 +46,13 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
       <button
         onClick={() => canPrev && onPageChange(currentPage - 1)}
         disabled={!canPrev}
+        className={canPrev ? "gt-btn-ghost" : ""}
         style={{
           ...btnBase,
           opacity: canPrev ? 1 : 0.5,
           cursor: canPrev ? "pointer" : "not-allowed",
         }}
-        onMouseEnter={e => { if (canPrev) (e.currentTarget as HTMLElement).style.background = "var(--gt-card-hover)"; }}
-        onMouseLeave={e => { if (canPrev) (e.currentTarget as HTMLElement).style.background = "var(--gt-card)"; }}
+        aria-label="Previous page"
       >
         Prev
       </button>
@@ -67,6 +65,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
             key={page}
             disabled={isDisabled}
             onClick={() => onPageChange(page)}
+            className={!isActive && !isDisabled ? "gt-btn-ghost" : ""}
             style={{
               ...btnBase,
               background: isActive ? "var(--gt-primary)" : "var(--gt-card)",
@@ -75,9 +74,8 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
               opacity: isDisabled ? 0.4 : 1,
               cursor: isDisabled ? "not-allowed" : "pointer",
             }}
-            onMouseEnter={e => { if (!isActive && !isDisabled) (e.currentTarget as HTMLElement).style.background = "var(--gt-card-hover)"; }}
-            onMouseLeave={e => { if (!isActive && !isDisabled) (e.currentTarget as HTMLElement).style.background = "var(--gt-card)"; }}
-            title={isDisabled ? "Fetch previous pages first" : undefined}
+            aria-current={isActive ? "page" : undefined}
+            aria-label={`Page ${page}${isDisabled ? " (unlock by fetching previous pages first)" : ""}`}
           >
             {page}
           </button>
@@ -87,16 +85,16 @@ export function Pagination({ currentPage, totalPages, onPageChange, maxAllowedPa
       <button
         onClick={() => canNext && onPageChange(currentPage + 1)}
         disabled={!canNext || (currentPage + 1 > maxAllowedPage)}
+        className={canNext ? "gt-btn-ghost" : ""}
         style={{
           ...btnBase,
           opacity: canNext ? 1 : 0.5,
           cursor: canNext ? "pointer" : "not-allowed",
         }}
-        onMouseEnter={e => { if (canNext) (e.currentTarget as HTMLElement).style.background = "var(--gt-card-hover)"; }}
-        onMouseLeave={e => { if (canNext) (e.currentTarget as HTMLElement).style.background = "var(--gt-card)"; }}
+        aria-label="Next page"
       >
         Next
       </button>
-    </div>
+    </nav>
   );
 }

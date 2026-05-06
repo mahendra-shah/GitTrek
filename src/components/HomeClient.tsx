@@ -1,14 +1,19 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { IssueCard, IssueItem } from "@/components/IssueCard";
 import { FilterPanel, FilterDraft } from "@/components/FilterPanel";
 import { Pagination } from "@/components/Pagination";
+import {
+  SITE_SUBLINE,
+  SITE_AI_CONTEXT,
+  SITE_CAREER_HOOK,
+} from "@/lib/site-copy";
 
 type SearchResponse = {
   total_count: number;
@@ -18,6 +23,7 @@ type SearchResponse = {
   endCursor: string | null;
   warnings: string[];
   rate_limit: { limit: number | null; remaining: number | null; reset: number | null } | null;
+  __resultType?: "issue" | "discussion";
 };
 
 type SessionUser = { login: string; name: string | null; avatarUrl: string; htmlUrl: string };
@@ -42,8 +48,48 @@ const DEFAULT: FilterDraft = {
   pairingRequested: false,
 };
 
+const EMPTY_FILTERS: FilterDraft = {
+  text: "",
+  languages: [],
+  labels: [],
+  zeroComments: false,
+  issueAgeDays: 30,
+  minStars: 0,
+  maxStars: null,
+  minForks: 0,
+  maxForks: null,
+  repoPushedDays: 365,
+  noAssignee: false,
+  hasContributing: false,
+  org: "",
+  onlyOrgs: false,
+  contributionType: "issue",
+  activeMaintainer: false,
+  pairingRequested: false,
+};
+
+function countActiveFilters(draft: FilterDraft, hideLinkedPRs: boolean): number {
+  let count = 0;
+  if (draft.text.trim()) count++;
+  if (draft.languages.length) count++;
+  if (draft.labels.length) count++;
+  if (draft.zeroComments) count++;
+  if (draft.issueAgeDays !== EMPTY_FILTERS.issueAgeDays) count++;
+  if (draft.minStars !== EMPTY_FILTERS.minStars || draft.maxStars !== EMPTY_FILTERS.maxStars) count++;
+  if (draft.minForks !== EMPTY_FILTERS.minForks || draft.maxForks !== EMPTY_FILTERS.maxForks) count++;
+  if (draft.repoPushedDays !== EMPTY_FILTERS.repoPushedDays) count++;
+  if (draft.noAssignee) count++;
+  if (draft.hasContributing) count++;
+  if (draft.org?.trim()) count++;
+  if (draft.onlyOrgs) count++;
+  if (draft.activeMaintainer && draft.contributionType === "issue") count++;
+  if (draft.pairingRequested && draft.contributionType === "issue") count++;
+  if (hideLinkedPRs) count++;
+  if (draft.contributionType === "discussion") count++;
+  return count;
+}
+
 function HomeContent() {
-  // Session
   const sessionQuery = useQuery<SessionUser | null>({
     queryKey: ["session"],
     queryFn: async () => {
@@ -61,44 +107,49 @@ function HomeContent() {
 
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    // Clear URL parameters immediately after initial hydration
-    // so they don't stay in the browser URL bar (User request)
-    if (searchParams && searchParams.toString().length > 0) {
-      window.history.replaceState(null, "", "/");
-    }
-  }, [searchParams]);
-
-  // Parse initial state from URL if present (supports "The Loop" CTAs)
   const [draft, setDraft] = useState<FilterDraft>(() => {
     if (!searchParams) return DEFAULT;
     const fromUrl: FilterDraft = { ...DEFAULT };
     if (searchParams.has("labels")) fromUrl.labels = searchParams.get("labels")!.split(",");
     if (searchParams.has("noAssignee")) fromUrl.noAssignee = searchParams.get("noAssignee") === "true";
     if (searchParams.has("zeroComments")) fromUrl.zeroComments = searchParams.get("zeroComments") === "true";
-    if (searchParams.has("discussions")) fromUrl.text = "is:discussion"; // Galaxy brain map
+    if (searchParams.has("discussions")) fromUrl.contributionType = "discussion";
+    if (searchParams.has("text")) fromUrl.text = searchParams.get("text")!;
     return fromUrl;
   });
   
   const [hideLinkedPRs, setHideLinkedPRs] = useState(() => searchParams?.get("hideLinkedPRs") === "true");
+
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
+
+  const syncUrlFromDraft = useCallback((d: FilterDraft, hidePRs: boolean) => {
+    const params = new URLSearchParams();
+    if (d.text) params.set("text", d.text);
+    if (d.labels.length) params.set("labels", d.labels.join(","));
+    if (d.noAssignee) params.set("noAssignee", "true");
+    if (d.zeroComments) params.set("zeroComments", "true");
+    if (d.contributionType === "discussion") params.set("discussions", "true");
+    if (hidePRs) params.set("hideLinkedPRs", "true");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
+  }, []);
 
 
 
   const [sort, setSort] = useState<"created" | "updated" | "comments" | "stars">("created");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
 
-  // Applied = committed on submit, used in query key
-  // Note: sort/order are NOT in the query key — sorting is client-side only
+  // Sort/order are client-side only.
   const [applied, setApplied] = useState<FilterDraft>(draft);
 
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
 
   const cursor = cursorHistory[currentPage - 1] ?? null;
 
   const searchQuery = useQuery<SearchResponse>({
-    queryKey: ["search", applied, currentPage, cursor],
+    queryKey: ["search", applied, currentPage, cursor, sessionQuery.data?.login ?? null],
     queryFn: async () => {
       const perPage = isGuest ? 10 : 20;
       const r = await fetch("/api/github/search", {
@@ -109,25 +160,29 @@ function HomeContent() {
           type: applied.contributionType,
           activeMaintainer: applied.activeMaintainer,
           pairingRequested: applied.pairingRequested,
-          // Discussions don't use labels the same way
           labels: applied.contributionType === "discussion" ? [] : applied.labels,
           perPage,
           page: currentPage,
           cursor,
+          viewerLogin: sessionQuery.data?.login,
         }),
       });
       if (!r.ok) throw new Error("search_failed");
-      return r.json();
+      const data = (await r.json()) as Omit<SearchResponse, "__resultType">;
+      return { ...data, __resultType: applied.contributionType };
     },
     enabled: !sessionQuery.isLoading,
     staleTime: 60_000,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) => {
+      if (!prev) return undefined;
+      const p = prev as SearchResponse;
+      return p.__resultType === applied.contributionType ? prev : undefined;
+    },
   });
 
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Sync the local search API rate limit up to the global cache for the Header to display
     const rl = searchQuery.data?.rate_limit;
     if (rl && rl.limit) {
       queryClient.setQueryData(["rateLimit"], (old: any) => ({
@@ -137,26 +192,45 @@ function HomeContent() {
     }
   }, [searchQuery.data?.rate_limit, queryClient]);
 
-  // Auto-submit search when keywords change (debounced)
   useEffect(() => {
     if (draft.text === applied.text) return;
     const timer = setTimeout(() => {
       setApplied(p => ({ ...p, text: draft.text }));
       setCurrentPage(1);
       setCursorHistory([null]);
+      syncUrlFromDraft({ ...draft }, hideLinkedPRs);
     }, 500);
     return () => clearTimeout(timer);
-  }, [draft.text, applied.text]);
+  }, [draft.text, applied.text, draft, hideLinkedPRs, syncUrlFromDraft]);
+
   const resetPagination = () => {
     setCurrentPage(1);
     setCursorHistory([null]);
   };
 
+  const applyFiltersImmediate = useCallback((next: FilterDraft) => {
+    setDraft(next);
+    setApplied(next);
+    resetPagination();
+    syncUrlFromDraft(next, hideLinkedPRs);
+  }, [hideLinkedPRs, syncUrlFromDraft]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setApplied({ ...draft });
     resetPagination();
+    syncUrlFromDraft(draft, hideLinkedPRs);
+    setFilterOpen(false);
   };
+
+  const handleResetFilters = useCallback(() => {
+    const resetDraft: FilterDraft = { ...EMPTY_FILTERS };
+    setDraft(resetDraft);
+    setApplied(resetDraft);
+    setHideLinkedPRs(false);
+    resetPagination();
+    syncUrlFromDraft(resetDraft, false);
+  }, [syncUrlFromDraft]);
 
   const handlePageChange = (page: number) => {
     if (page > currentPage && searchQuery.data?.endCursor) {
@@ -194,20 +268,11 @@ function HomeContent() {
     : 1;
 
   const rl = searchQuery.data?.rate_limit;
+  const activeFilterCount = countActiveFilters(draft, hideLinkedPRs);
 
   return (
     <>
-      {/* ── SUBHEADER SLOGAN ── */}
-      <div style={{
-        background: "var(--gt-card)", borderBottom: "1px solid var(--gt-border)",
-        padding: "8px 24px", textAlign: "center", fontSize: 11, fontWeight: 700,
-        color: "var(--gt-text-subtle)", letterSpacing: "0.1em", textTransform: "uppercase"
-      }}>
-        Find Issues <span style={{ color: "var(--gt-primary)", margin: "0 6px" }}>·</span> Track Badges <span style={{ color: "var(--gt-primary)", margin: "0 6px" }}>·</span> Contribute
-      </div>
-
-      {/* ── BODY ── */}
-      <main style={{ flex: 1, maxWidth: 1280, margin: "0 auto", width: "100%", padding: "32px 24px" }}>
+      <main id="main-content" style={{ flex: 1, maxWidth: 1280, margin: "0 auto", width: "100%", padding: "32px 24px" }}>
 
         {isGuest && (
           <div style={{
@@ -226,126 +291,170 @@ function HomeContent() {
               Sign in with GitHub
             </button>
             {" "}to unlock deep Repository Quality Gates (Stars, Forks, Activity).
+            {" "}
+            <Link href="/guide" style={{ color: "var(--gt-primary)", fontWeight: 700 }}>
+              New to open source? Read the beginner&apos;s guide →
+            </Link>
           </div>
         )}
 
 
-        {/* ── 🎯 MISSIONS BAR ── */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <h2 style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gt-text-subtle)", margin: 0 }}>
-              🎯 Quick Missions
-            </h2>
-            <span style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>— 1-click badge hunting mode</span>
+        {/* ── Hero row: h1+subline left, Quick Missions right ── */}
+        <div className="gt-hero-row">
+          <div className="gt-hero-text">
+            <h1 style={{
+              fontSize: "clamp(1.15rem, 2.6vw, 1.5rem)",
+              fontWeight: 800,
+              color: "var(--gt-text)",
+              letterSpacing: "-0.02em",
+              margin: "0 0 4px",
+              lineHeight: 1.2,
+            }}>
+              Don&apos;t get sniped on GitHub issues.
+            </h1>
+            <p style={{ fontSize: 13, color: "var(--gt-text-muted)", margin: 0, lineHeight: 1.45 }}>
+              {SITE_SUBLINE}
+            </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {[
-              {
-                id: "galaxy-brain",
-                emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
-                desc: "Unanswered Q&A discussions",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
-                  setDraft(m); setApplied(m); resetPagination();
+
+          <div className="gt-hero-missions">
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--gt-text-subtle)", whiteSpace: "nowrap" }}>
+              🎯 Missions
+            </span>
+            <div className="gt-missions-strip">
+              {[
+                {
+                  id: "galaxy-brain", emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
+                  desc: "Unanswered Q&A discussions — earn Galaxy Brain badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-              {
-                id: "pair-extraordinaire",
-                emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
-                desc: "Issues asking for co-authors",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
-                  setDraft(m); setApplied(m); resetPagination();
+                {
+                  id: "pair-extraordinaire", emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
+                  desc: "Issues asking for co-authors — earn Pair Extraordinaire badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-              {
-                id: "pull-shark",
-                emoji: "🦈", label: "Pull Shark", badge: "Fast",
-                desc: "Zero-comment, fresh issues",
-                onClick: () => {
-                  const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
-                  setDraft(m); setApplied(m); resetPagination();
+                {
+                  id: "pull-shark", emoji: "🦈", label: "Pull Shark", badge: "Fast",
+                  desc: "Zero-comment, fresh issues — earn Pull Shark badge",
+                  onClick: () => {
+                    const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
+                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
+                  },
                 },
-              },
-            ].map(mission => (
-              <button
-                key={mission.id}
-                id={`mission-${mission.id}`}
-                type="button"
-                onClick={mission.onClick}
-                className="gt-mission-shimmer"
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "9px 14px", borderRadius: 12,
-                  border: "1px solid var(--gt-border)",
-                  cursor: "pointer", textAlign: "left",
-                  boxShadow: "var(--gt-shadow)",
-                  transition: "all 0.2s cubic-bezier(0.4,0,0.2,1)",
-                  position: "relative", overflow: "hidden",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-primary)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow-hover), 0 0 0 1px rgba(249,115,22,0.15)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border)";
-                  (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow)";
-                }}
-              >
-                <span style={{ fontSize: 22 }}>{mission.emoji}</span>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--gt-text)" }}>{mission.label}</span>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                      background: "var(--gt-primary-glow)", color: "var(--gt-primary-text)",
-                      border: "1px solid rgba(249,115,22,0.25)",
-                    }}>{mission.badge}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--gt-text-muted)" }}>{mission.desc}</div>
-                </div>
-              </button>
-            ))}
+              ].map(mission => (
+                <button
+                  key={mission.id}
+                  id={`mission-${mission.id}`}
+                  type="button"
+                  onClick={mission.onClick}
+                  title={mission.desc}
+                  aria-label={`${mission.label}: ${mission.desc}`}
+                  className="gt-mission-chip"
+                >
+                  <span aria-hidden="true">{mission.emoji}</span>
+                  <span>{mission.label}</span>
+                  <span className="gt-mission-badge">{mission.badge}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* ── FIND ISSUES TAB ── */}
-        {(
-          <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: 32 }}>
-            {/* Sidebar */}
-            <aside>
-              <div style={{
-                position: "sticky", top: 80,
-                background: "var(--gt-sidebar)", border: "1px solid var(--gt-border)",
-                borderRadius: 16, padding: 24,
-                boxShadow: "var(--gt-shadow)",
-                maxHeight: "calc(100vh - 100px)", overflowY: "auto"
-              }}>
-                <FilterPanel
-                  draft={draft}
-                  setDraft={setDraft}
-                  hideLinkedPRs={hideLinkedPRs}
-                  setHideLinkedPRs={setHideLinkedPRs}
-                  isGuest={isGuest}
-                  onSubmit={handleSubmit}
-                  isSearching={searchQuery.isFetching}
-                />
-              </div>
-            </aside>
+        <div
+          className={`gt-filter-overlay${filterOpen ? " open" : ""}`}
+          onClick={() => setFilterOpen(false)}
+          aria-hidden="true"
+        />
 
-            {/* Results */}
+        <div className="gt-layout-grid">
+          <aside className={`gt-filter-aside${filterOpen ? " open" : ""}`}>
+            <div
+              className="gt-filter-inner"
+              style={{
+                background: "var(--gt-sidebar)", border: "none",
+                borderRadius: 14, padding: 20,
+                boxShadow: "var(--gt-shadow)",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div className="gt-mobile-filter-btn" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
+                <button
+                  onClick={() => setFilterOpen(false)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--gt-text-muted)", display: "flex", alignItems: "center",
+                    gap: 6, fontSize: 13, fontWeight: 600, padding: "4px 8px",
+                  }}
+                  aria-label="Close filters"
+                >
+                  <X size={16} /> Close
+                </button>
+              </div>
+              <FilterPanel
+                draft={draft}
+                setDraft={setDraft}
+                onApplyImmediate={applyFiltersImmediate}
+                onReset={handleResetFilters}
+                hideLinkedPRs={hideLinkedPRs}
+                setHideLinkedPRs={(v) => {
+                  setHideLinkedPRs(v);
+                  syncUrlFromDraft(draft, v);
+                }}
+                isGuest={isGuest}
+                onSubmit={handleSubmit}
+                isSearching={searchQuery.isFetching}
+              />
+            </div>
+          </aside>
+
             <section>
-              {/* Results header */}
-              {/* Contribution Type Toggle with Elastic Spring Effect */}
-              <div style={{ display: "flex", marginBottom: 16 }}>
+              <div className="gt-mobile-filter-btn" style={{ marginBottom: 12 }}>
+                <button
+                  onClick={() => setFilterOpen(true)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    padding: "9px 16px", borderRadius: 10, fontSize: 14, fontWeight: 600,
+                    background: "var(--gt-card)", border: "1px solid var(--gt-border)",
+                    color: "var(--gt-text)", cursor: "pointer",
+                    boxShadow: "var(--gt-shadow)",
+                  }}
+                  aria-expanded={filterOpen}
+                  aria-controls="filter-panel"
+                >
+                  <SlidersHorizontal size={15} />
+                  Filters{activeFilterCount ? ` · ${activeFilterCount}` : ""}
+                </button>
+              </div>
+
+              <div
+                className="gt-results-search-bar"
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "stretch",
+                  gap: 12,
+                  marginBottom: 16,
+                  position: "sticky",
+                  top: 61,       // header height (60px) + 1px border
+                  zIndex: 10,    // above page content, below header (zIndex 40)
+                  paddingBottom: 8,
+                  paddingTop: 8,
+                  background: "var(--gt-bg)",
+                }}
+              >
                 <div style={{
-                  display: "flex", gap: 4, padding: 4, position: "relative", width: 340,
+                  display: "flex", gap: 4, padding: 4, position: "relative",
+                  flex: "1 1 280px", maxWidth: 400,
                   background: "var(--gt-card)", border: "1px solid var(--gt-border)",
                   borderRadius: 12, boxShadow: "var(--gt-shadow)",
                 }}>
-                  {/* Absolute positioned background highlight with elastic spring overshoot */}
                   <div style={{
                     position: "absolute",
                     top: 4,
@@ -371,10 +480,20 @@ function HomeContent() {
                         type="button"
                         title={desc}
                         onClick={() => {
-                          const updated = { ...draft, contributionType: val, labels: val === "discussion" ? [] : draft.labels };
+                          const updated = {
+                            ...draft,
+                            contributionType: val,
+                            labels: val === "discussion" ? [] : draft.labels,
+                            noAssignee: val === "discussion" ? false : draft.noAssignee,
+                            activeMaintainer: val === "discussion" ? false : draft.activeMaintainer,
+                            pairingRequested: val === "discussion" ? false : draft.pairingRequested,
+                          };
+                          const nextHideLinkedPRs = val === "discussion" ? false : hideLinkedPRs;
                           setDraft(updated);
                           setApplied(updated);
+                          setHideLinkedPRs(nextHideLinkedPRs);
                           resetPagination();
+                          syncUrlFromDraft(updated, nextHideLinkedPRs);
                         }}
                         style={{
                           flex: 1, padding: "7px 0", borderRadius: 9, fontSize: 13, fontWeight: isActive ? 700 : 500,
@@ -396,14 +515,11 @@ function HomeContent() {
                     );
                   })}
                 </div>
-              </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20, flexWrap: "wrap" }}>
-                {/* Search within results */}
                 <form
                   onSubmit={handleSubmit}
                   style={{
-                    flex: 1, minWidth: 200,
+                    flex: "2 1 240px",
                     display: "flex", alignItems: "center", gap: 10,
                     background: "var(--gt-card)", border: "1px solid var(--gt-border)",
                     borderRadius: 10, padding: "8px 14px",
@@ -426,8 +542,7 @@ function HomeContent() {
                 </form>
               </div>
 
-              {/* Sort pills + count row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 6 }}>
                   {([
                     { val: "created", label: "Newest" },
@@ -464,15 +579,63 @@ function HomeContent() {
                 <div style={{ flex: 1 }} />
                 <span style={{ fontSize: 13, color: "var(--gt-text-subtle)" }}>
                   {(!mounted || searchQuery.isFetching) ? (
-                    <span style={{ color: "var(--gt-primary)", fontWeight: 600 }}>🔍 Scanning GitHub issues…</span>
+                    <span style={{ color: "var(--gt-primary)", fontWeight: 600 }}>
+                      🔍 Scanning GitHub {applied.contributionType === "discussion" ? "discussions" : "issues"}…
+                    </span>
                   ) : searchQuery.data ? (
                     `${searchQuery.data.total_count.toLocaleString()} ${applied.contributionType === "discussion" ? "discussions" : "issues"} found`
                     + (searchQuery.data.filtered_out ? ` · ${searchQuery.data.filtered_out} filtered` : "")
                   ) : ""}
                 </span>
+                {/* PR status legend toggle */}
+                <button
+                  onClick={() => setLegendOpen(v => !v)}
+                  aria-expanded={legendOpen}
+                  title="What do the PR status badges mean?"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    background: legendOpen ? "var(--gt-primary-glow)" : "transparent",
+                    border: "1px solid var(--gt-border)",
+                    borderRadius: 20, padding: "4px 10px",
+                    fontSize: 12, fontWeight: 600,
+                    color: legendOpen ? "var(--gt-primary-text)" : "var(--gt-text-subtle)",
+                    cursor: "pointer", transition: "all 0.15s",
+                    flexShrink: 0,
+                  }}
+                >
+                  ✅ ? Legend
+                </button>
               </div>
 
-              {/* Error — only show after hydration to avoid SSR mismatch */}
+              {/* Inline PR legend — only when toggled */}
+              {legendOpen && (
+                <div style={{ marginBottom: 16 }}>
+                  <section aria-label="PR competition status labels" className="gt-pr-legend">
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-safe-text)", background: "var(--gt-safe-bg)", borderColor: "var(--gt-safe-border)" }}>
+                        ✅ Available
+                      </div>
+                      <p className="gt-pr-legend-desc">No linked open PR — safer to pick up before you spend deep focus time.</p>
+                    </div>
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-danger-text)", background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)" }}>
+                        ⚠️ Being Claimed
+                      </div>
+                      <p className="gt-pr-legend-desc">An open PR already references this — competition likely.</p>
+                    </div>
+                    <div className="gt-pr-legend-card">
+                      <div className="gt-pr-legend-label" style={{ color: "var(--gt-warn-text)", background: "var(--gt-warn-bg)", border: "1px solid var(--gt-warn-border)" }}>
+                        🔶 Work in Progress
+                      </div>
+                      <p className="gt-pr-legend-desc">Draft PR or branch started — proceed with caution.</p>
+                    </div>
+                  </section>
+                  <p style={{ fontSize: 12, color: "var(--gt-text-subtle)", margin: "10px 0 0", lineHeight: 1.5 }}>
+                    {SITE_AI_CONTEXT} {SITE_CAREER_HOOK}
+                  </p>
+                </div>
+              )}
+
               {mounted && searchQuery.isError && (
                 <div style={{
                   background: "var(--gt-danger-bg)", border: "1px solid var(--gt-danger-border)",
@@ -483,18 +646,16 @@ function HomeContent() {
                 </div>
               )}
 
-              {/* Empty state — only show after hydration and fetch completes */}
               {mounted && !searchQuery.isFetching && searchQuery.data && displayedIssues.length === 0 && (
                 <div style={{
                   border: "2px dashed var(--gt-border)", borderRadius: 12,
                   padding: "64px 24px", textAlign: "center",
                   color: "var(--gt-text-subtle)", fontSize: 15,
                 }}>
-                  No issues match these filters. Try relaxing the criteria.
+                  No {applied.contributionType === "discussion" ? "discussions" : "issues"} match these filters. Try relaxing the criteria.
                 </div>
               )}
 
-              {/* Cards */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {(!mounted || searchQuery.isFetching) ? (
                   Array.from({ length: 5 }).map((_, i) => (
@@ -505,20 +666,16 @@ function HomeContent() {
                       animationDelay: `${i * 0.1}s`,
                       display: "flex", flexDirection: "column", gap: 12
                     }}>
-                      {/* Repo line */}
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <div style={{ width: 14, height: 14, borderRadius: "50%", background: "var(--gt-border)", flexShrink: 0 }} />
                         <div style={{ width: `${30 + (i % 3) * 12}%`, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
                       </div>
-                      {/* Title line */}
                       <div style={{ width: `${65 + (i % 2) * 15}%`, height: 16, borderRadius: 4, background: "var(--gt-border)" }} />
-                      {/* Label pills */}
                       <div style={{ display: "flex", gap: 6 }}>
                         <div style={{ width: 72, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
                         <div style={{ width: 88, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />
                         {i % 2 === 0 && <div style={{ width: 56, height: 20, borderRadius: 10, background: "var(--gt-border)" }} />}
                       </div>
-                      {/* Meta row */}
                       <div style={{ display: "flex", gap: 16, marginTop: 4 }}>
                         <div style={{ width: 48, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
                         <div style={{ width: 60, height: 11, borderRadius: 4, background: "var(--gt-border)" }} />
@@ -528,12 +685,17 @@ function HomeContent() {
                   ))
                 ) : displayedIssues.length > 0 ? (
                   displayedIssues.map((issue, idx) => (
-                    <IssueCard key={`${issue.id}-${issue.number}-${idx}`} issue={issue} isGuest={isGuest} appliedLabels={applied.labels} />
+                    <IssueCard
+                      key={`${issue.id}-${issue.number}-${idx}`}
+                      issue={issue}
+                      isGuest={isGuest}
+                      appliedLabels={applied.labels}
+                      animationDelay={idx * 0.05}
+                    />
                   ))
                 ) : null}
               </div>
 
-              {/* Pagination */}
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
@@ -542,7 +704,6 @@ function HomeContent() {
               />
             </section>
           </div>
-        )}
       </main>
     </>
   );

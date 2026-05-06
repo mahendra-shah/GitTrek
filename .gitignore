@@ -49,6 +49,10 @@ AGENTS.md
 test-gql.js
 test-search.js
 playwright-report/
+test-results/
 badge.md
 SEO_STRATEGY.md
+
+# Local notes (not pushed)
+docs/mydoc.md
 

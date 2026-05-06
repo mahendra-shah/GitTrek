@@ -1,4 +1,5 @@
 import { Star, GitFork, MessageSquare, Clock, CheckSquare } from "lucide-react";
+import { formatViewerReasons, type ViewerSummary } from "@/lib/viewer-summary";
 
 export type PRStatus = {
   status: "safe" | "open_pr" | "draft_pr" | "linked_branch" | "checking" | "error" | "guest";
@@ -30,6 +31,8 @@ export type IssueItem = {
   tasks: { completed: number; total: number } | null;
   prStatus: PRStatus;
   isDiscussion?: boolean;
+  /** Present when signed in — whether you already engaged with this issue/discussion */
+  viewer?: ViewerSummary | null;
 };
 
 function fmt(n: number) {
@@ -53,9 +56,33 @@ function ago(iso: string) {
 function PRBadge({ s }: { s: PRStatus }) {
   const base = "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-semibold border";
   if (s.status === "guest") return (
-    <span title="Sign in to see if this issue is already being worked on by someone else" style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={base}>
-      Sign in to check
-    </span>
+    <button
+      title="Sign in with GitHub to see if this issue is already being claimed"
+      onClick={() => { window.location.href = "/api/auth/login"; }}
+      style={{
+        display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 3,
+        background: "none", border: "none", padding: 0, cursor: "pointer",
+      }}
+    >
+      <span
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          background: "var(--gt-safe-bg)", color: "var(--gt-safe-text)",
+          borderColor: "var(--gt-safe-border)",
+          filter: "blur(4px) grayscale(0.5)",
+          userSelect: "none", pointerEvents: "none",
+        }}
+        className={base}
+      >
+        ✅ Available
+      </span>
+      <span style={{
+        fontSize: 10, fontWeight: 700, color: "var(--gt-primary)",
+        letterSpacing: "0.02em", whiteSpace: "nowrap",
+      }}>
+        🔒 Sign in to unlock
+      </span>
+    </button>
   );
   if (s.status === "checking") return (
     <span style={{ background: "var(--gt-card-hover)", color: "var(--gt-text-subtle)", borderColor: "var(--gt-border)" }} className={`${base} animate-pulse`}>
@@ -90,7 +117,7 @@ function PRBadge({ s }: { s: PRStatus }) {
 }
 
 
-export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: IssueItem; isGuest?: boolean; appliedLabels?: string[] }) {
+export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay = 0 }: { issue: IssueItem; isGuest?: boolean; appliedLabels?: string[]; animationDelay?: number }) {
   const hasRepoData = issue.repository.stars > 0 || issue.repository.forks > 0;
   const isDiscussion = !!issue.isDiscussion;
 
@@ -108,39 +135,51 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
     : repoAgeDays <= 30
     ? `active ${repoAgeDays}d ago`
     : null;
+  const viewerHint = issue.viewer?.engaged ? formatViewerReasons(issue.viewer.reasons) : "";
 
   return (
     <article
+      className="gt-card-interactive gt-result-card"
       style={{
         background: "var(--gt-card)",
         border: "1px solid var(--gt-border)",
         boxShadow: "var(--gt-shadow)",
         borderRadius: 12,
         padding: "20px 24px",
-        transition: "box-shadow 0.2s, border-color 0.2s",
-      }}
-      onMouseEnter={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow-hover)";
-        (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border-strong)";
-      }}
-      onMouseLeave={e => {
-        (e.currentTarget as HTMLElement).style.boxShadow = "var(--gt-shadow)";
-        (e.currentTarget as HTMLElement).style.borderColor = "var(--gt-border)";
+        animationDelay: `${animationDelay}s`,
       }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          {/* Repo name */}
           <a
             href={issue.repository.htmlUrl}
             target="_blank"
             rel="noreferrer"
-            style={{ color: "var(--gt-text-muted)", fontSize: 12, fontWeight: 500 }}
+            style={{ color: "var(--gt-text-muted)", fontSize: 12, fontWeight: 500, wordBreak: "break-word" }}
             className="hover:underline"
           >
             {issue.repository.fullName}
           </a>
-          {/* Repo freshness signal */}
+          {issue.viewer?.engaged && (
+            <span
+              title={`You're involved: ${viewerHint}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                marginLeft: 8,
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 7px",
+                borderRadius: 5,
+                background: "rgba(99,102,241,0.10)",
+                color: "#6366f1",
+                border: "1px solid rgba(99,102,241,0.25)",
+              }}
+            >
+              👋 You engaged
+            </span>
+          )}
           {repoLastActiveText && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700,
@@ -153,8 +192,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
             </span>
           )}
 
-          {/* Title */}
-          <h4 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <h3 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontWeight: 700, fontSize: 16 }}>
             {isDiscussion && (
               <span style={{
                 fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 5,
@@ -174,7 +212,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
               href={issue.htmlUrl}
               target="_blank"
               rel="noreferrer"
-              style={{ color: "var(--gt-text)", fontSize: 16, fontWeight: 700, textDecoration: "none" }}
+              style={{ color: "var(--gt-text)", fontSize: 16, fontWeight: 700, textDecoration: "none", minWidth: 0, wordBreak: "break-word" }}
               className="hover:underline"
             >
               {issue.title}
@@ -182,9 +220,8 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
             <span style={{ color: "var(--gt-text-subtle)", fontSize: 15, fontWeight: 400 }}>
               #{issue.number}
             </span>
-          </h4>
+          </h3>
 
-          {/* Labels */}
           <div className="flex flex-wrap gap-2 mb-4">
             {issue.labels.slice(0, 5).map((label, i) => {
               const isApplied = appliedLabels.length > 0 
@@ -218,7 +255,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
             })}
           </div>
 
-          {/* Stats row */}
           <div className="flex flex-wrap items-center gap-4" style={{ fontSize: 13, color: "var(--gt-text-muted)" }}>
             {hasRepoData ? (
               <>
@@ -259,7 +295,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [] }: { issue: Issue
           </div>
         </div>
 
-        {/* PR badge — only for issues, not discussions */}
         <div className="flex-shrink-0 pt-1">
           {!isDiscussion && <PRBadge s={issue.prStatus} />}
           {isDiscussion && (

@@ -124,15 +124,15 @@ export function buildIssueSearchQuery(filters: IssueSearchFilters): QueryBuildRe
     tokens.push(text);
   }
 
-  // ── Issue-only qualifiers ─────────────────────────────────────────────────
-  // These are not supported in GitHub Discussion search and will cause 0 results.
+  // Zero replies/comments — supported on both issue and discussion GitHub search
+  if (filters.zeroComments) {
+    tokens.push("comments:0");
+  }
+
+  // Discussion search rejects these qualifiers — keep them issue-only.
   if (!isDiscussion) {
     if (filters.noAssignee) {
       tokens.push("no:assignee");
-    }
-
-    if (filters.zeroComments) {
-      tokens.push("comments:0");
     }
 
     if (filters.issueAgeDays) {

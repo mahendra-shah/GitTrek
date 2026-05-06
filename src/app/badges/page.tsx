@@ -12,14 +12,37 @@ type PageProps = {
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
   const params = await searchParams;
   const user = params.user;
+  
+  if (!user) {
+    return {
+      title: "My GitHub Badges — GitTrek",
+      description: "Track your progress toward GitHub achievement badges. See exactly how many more PRs, stars, and discussion answers you need.",
+      alternates: { canonical: "/badges" },
+    };
+  }
+
+  const ogImageUrl = `https://gittrek.vercel.app/api/og/badge?user=${user}&badge=pullShark`;
+
   return {
-    title: user ? `${user}'s GitHub Badges` : "My GitHub Badges — GitTrek",
-    description: user
-      ? `Track ${user}'s progress toward GitHub achievement badges — Pull Shark, Starstruck, Galaxy Brain and more.`
-      : "Track your progress toward GitHub achievement badges. See exactly how many more PRs, stars, and discussion answers you need.",
-    alternates: { canonical: user ? `/badges?user=${user}` : "/badges" },
-    // Prevent indexing of user-specific pages to avoid thin-content index bloat
-    robots: user ? { index: false, follow: false } : undefined,
+    title: `${user}'s GitHub Badges`,
+    description: `Check ${user}'s progress toward GitHub achievement badges on GitTrek. Track your own badges too!`,
+    alternates: { canonical: `/badges?user=${user}` },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title: `${user}'s GitHub Badges 🏅`,
+      description: `Check ${user}'s progress toward GitHub achievement badges on GitTrek. Track your own badges too!`,
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+      }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${user}'s GitHub Badges 🏅`,
+      description: `Check ${user}'s progress toward GitHub achievement badges on GitTrek.`,
+      images: [ogImageUrl],
+    },
   };
 }
 
@@ -47,7 +70,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const signedInUser = await getSignedInUser();
 
-  // Determine which username to show badges for
   const targetUsername = params.user ?? signedInUser ?? null;
   const isOwnProfile = targetUsername === signedInUser;
 
@@ -63,7 +85,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         gap: 28,
       }}
     >
-      {/* ── Page header ── */}
       <div>
         <h1
           style={{
@@ -80,13 +101,11 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* ── Any-user lookup bar ── */}
       <UserLookup
         initialUsername={targetUsername ?? ""}
         signedInUser={signedInUser}
       />
 
-      {/* ── Sign-in CTA ── */}
       {!targetUsername && (
         <div
           style={{
@@ -130,6 +149,35 @@ export default async function BadgesPage({ searchParams }: PageProps) {
 
       {targetUsername && (
         <BadgeDashboard username={targetUsername} isOwnProfile={isOwnProfile} />
+      )}
+
+      {!isOwnProfile && targetUsername && (
+        <div style={{
+          position: "sticky", bottom: 20, zIndex: 100,
+          background: "var(--gt-card)", border: "1px solid var(--gt-border-strong)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)", borderRadius: 16,
+          padding: "20px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          gap: 20, marginTop: 40
+        }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", marginBottom: 4 }}>
+              What badges do YOU have?
+            </div>
+            <div style={{ fontSize: 14, color: "var(--gt-text-muted)" }}>
+              Sign in to track your own GitHub achievements.
+            </div>
+          </div>
+          <a
+            href="/api/auth/login"
+            style={{
+              display: "inline-block", background: "var(--gt-primary)", color: "#fff",
+              padding: "10px 20px", borderRadius: 8, fontWeight: 600, fontSize: 14, textDecoration: "none",
+              whiteSpace: "nowrap"
+            }}
+          >
+            Check My Badges →
+          </a>
+        </div>
       )}
     </main>
     </>

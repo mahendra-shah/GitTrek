@@ -3,6 +3,9 @@
    ==================================================== */
 
 :root {
+  /* Header height (sticky offset for content below) */
+  --gt-header-h: 61px;
+
   /* Brand — same in both modes */
   --gt-primary:      #F97316;
   --gt-primary-dark: #EA580C;
@@ -48,6 +51,19 @@
   --gt-danger-border:rgba(185, 28, 28, 0.20);
   
   --gt-star:         #F59E0B;
+
+  /* Modal surface — intentionally dark regardless of color scheme */
+  --gt-modal-bg:          #0d1117;
+  --gt-modal-surface:     #06080C;
+  --gt-modal-text:        #E6EDF3;
+  --gt-modal-text-muted:  #8b949e;
+  --gt-modal-text-dim:    #484f58;
+  --gt-modal-text-light:  #c9d1d9;
+  --gt-modal-border:      rgba(255,255,255,0.10);
+  --gt-modal-border-dim:  rgba(255,255,255,0.07);
+  --gt-modal-overlay:     rgba(0,0,0,0.82);
+  --gt-modal-item-hover:  rgba(255,255,255,0.12);
+  --gt-modal-item-bg:     rgba(255,255,255,0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -94,6 +110,8 @@
   }
 }
 
+/* ── Keyframe Animations ── */
+
 @keyframes gt-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
@@ -109,13 +127,60 @@
   50% { box-shadow: 0 0 0 4px rgba(249,115,22,0); }
 }
 
-.gt-mission-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(249,115,22,0.08) 50%,
-    transparent 100%
-  );
+@keyframes gt-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes gt-modal-in {
+  from { opacity: 0; transform: scale(0.95) translateY(12px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes gt-glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
+}
+
+@keyframes gt-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gt-card-enter {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gt-badge-enter {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes gt-celebration-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(249,115,22,0.6); }
+  70%  { box-shadow: 0 0 0 12px rgba(249,115,22,0); }
+  100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); }
+}
+
+/* Subtle shimmer on the compact mission chips */
+.gt-mission-chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(249,115,22,0.07) 50%, transparent 100%);
   background-size: 200% auto;
   animation: gt-shimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Reduced Motion ── */
+/* Disable all animations/transitions for users who request it */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

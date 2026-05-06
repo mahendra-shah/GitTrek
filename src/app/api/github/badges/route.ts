@@ -1,15 +1,3 @@
-/**
- * Unified Achievement Badge API
- *
- * Fetches all badge data for a given GitHub username.
- * Fires 2 GraphQL requests (instead of the previous 5 REST+GraphQL calls):
- *   1. A single "core" query for Pull Shark, Galaxy Brain, YOLO, and Public Sponsor.
- *   2. A paginated "starstruck" query to find the highest-starred owned repo.
- *
- * This reduces client-to-server round-trips by ~80% for the badge dashboard.
- * Per-IP rate limiting protects the shared GITHUB_BOT_TOKEN from quota depletion.
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getToken } from "@/lib/auth/adapter";
@@ -55,9 +43,7 @@ async function gqlFetch(token: string, query: string, variables: Record<string, 
   return json.data;
 }
 
-// ── Query 1: Core badges (single round-trip) ──────────────────────────────────
-// Fetches Pull Shark (merged PRs), Galaxy Brain (accepted answers),
-// YOLO (no-review merges), and Public Sponsor (sponsoring count).
+// Core badges in one round-trip (pull shark, galaxy brain, YOLO, sponsor counts).
 const CORE_BADGES_QUERY = `
   query CoreBadges($login: String!, $pullSharkQuery: String!, $yoloQuery: String!) {
     pullShark: search(query: $pullSharkQuery, type: ISSUE, first: 1) {
@@ -78,8 +64,7 @@ const CORE_BADGES_QUERY = `
   }
 `;
 
-// ── Query 2: Starstruck (paginated) ───────────────────────────────────────────
-// Must paginate to find the highest-starred non-fork repo.
+// Starstruck: paginate repos by stars to find best non-fork.
 const STARSTRUCK_QUERY = `
   query Starstruck($login: String!, $after: String) {
     user(login: $login) {

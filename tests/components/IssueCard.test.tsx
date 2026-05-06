@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { IssueCard, IssueItem, PRStatus } from '../../src/components/IssueCard';
+import { IssueCard, IssueItem } from '../../src/components/IssueCard';
 
 describe('IssueCard Component', () => {
   const mockIssue: IssueItem = {
@@ -95,5 +95,37 @@ describe('IssueCard Component', () => {
     render(<IssueCard issue={taskIssue} />);
     
     expect(screen.getByText('2 / 4')).toBeInTheDocument();
+  });
+
+  it('shows discussion affordance instead of PR badge', () => {
+    render(<IssueCard issue={{ ...mockIssue, isDiscussion: true }} />);
+    expect(screen.getByText(/Answer it/)).toBeInTheDocument();
+    expect(screen.queryByText('✅ Available')).not.toBeInTheDocument();
+  });
+
+  it('shows viewer engagement when viewer summary is present', () => {
+    render(
+      <IssueCard
+        issue={{
+          ...mockIssue,
+          viewer: { engaged: true, reasons: ['commented'] },
+        }}
+      />
+    );
+    expect(screen.getByText('👋 You engaged')).toBeInTheDocument();
+  });
+
+  it('shows repo activity chip when repo was pushed recently', () => {
+    render(<IssueCard issue={mockIssue} />);
+    expect(screen.getByText(/active today/)).toBeInTheDocument();
+  });
+
+  it('shows guest lock on PR status when guest', () => {
+    const guestPr: IssueItem = {
+      ...mockIssue,
+      prStatus: { status: 'guest', openPrCount: 0, draftPrCount: 0, linkedBranches: 0 },
+    };
+    render(<IssueCard issue={guestPr} isGuest />);
+    expect(screen.getByText('🔒 Sign in to unlock')).toBeInTheDocument();
   });
 });

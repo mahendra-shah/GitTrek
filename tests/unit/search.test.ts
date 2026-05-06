@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { buildIssueSearchQuery } from '../../src/lib/github/search';
+import { describe, it, expect } from "vitest";
+import {
+  buildIssueSearchQuery,
+  filterByRepoQuality,
+  type IssueSearchItem,
+} from "../../src/lib/github/search";
 
 describe('buildIssueSearchQuery', () => {
   const defaultFilters = {
@@ -76,5 +80,154 @@ describe('buildIssueSearchQuery', () => {
     expect(result.warnings[0]).toContain('Limited label filters');
     expect(result.query).toContain('label:"1"');
     expect(result.query).not.toContain('label:"7"');
+  });
+
+  it("adds active maintainer filter (recent push)", () => {
+    const result = buildIssueSearchQuery({ ...defaultFilters, activeMaintainer: true });
+    expect(result.query).toContain("pushed:>=");
+  });
+
+  it("adds pairing keyword filter", () => {
+    const result = buildIssueSearchQuery({ ...defaultFilters, pairingRequested: true });
+    expect(result.query).toContain("pair with me");
+    expect(result.query).toContain("in:comments");
+  });
+});
+
+describe("buildIssueSearchQuery (discussions)", () => {
+  const discussionBase = {
+    text: "",
+    languages: [],
+    labels: ["bug"],
+    zeroComments: true,
+    noAssignee: true,
+    issueAgeDays: 30,
+    minStars: null,
+    maxStars: null,
+    minForks: null,
+    maxForks: null,
+    repoPushedDays: null,
+    hasContributing: false,
+    org: "",
+    onlyOrgs: false,
+    type: "discussion" as const,
+    activeMaintainer: true,
+    pairingRequested: true,
+  };
+
+  it("uses discussion tokens and skips issue-only qualifiers", () => {
+    const result = buildIssueSearchQuery(discussionBase);
+    expect(result.query.startsWith("is:open")).toBe(true);
+    expect(result.query).not.toContain("is:issue");
+    expect(result.query).not.toContain("archived:false");
+    expect(result.query).not.toContain("no:assignee");
+    expect(result.query).not.toContain("created:>=");
+    expect(result.query).not.toContain('label:"bug"');
+    expect(result.query).not.toContain("pushed:>=");
+    expect(result.query).not.toContain("pair with me");
+    expect(result.query).toContain("comments:0");
+  });
+});
+
+function item(
+  opts: Partial<IssueSearchItem> & { repository?: Partial<IssueSearchItem["repository"]> }
+): IssueSearchItem {
+  const { repository: repoPartial, ...rest } = opts;
+  const repository: IssueSearchItem["repository"] = {
+    fullName: "o/r",
+    htmlUrl: "https://github.com/o/r",
+    stars: 100,
+    forks: 50,
+    pushedAt: new Date().toISOString(),
+    isFork: false,
+    ...repoPartial,
+  };
+  return {
+    id: 1,
+    number: 1,
+    title: "t",
+    htmlUrl: "https://github.com/o/r/issues/1",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    comments: 0,
+    labels: [],
+    owner: "o",
+    repo: "r",
+    repository,
+    ...rest,
+    repository,
+  };
+}
+
+describe("filterByRepoQuality", () => {
+  const emptyFilters = {
+    minStars: null,
+    maxStars: null,
+    minForks: null,
+    maxForks: null,
+    repoPushedDays: null,
+    hasContributing: false,
+    onlyOrgs: false,
+  };
+
+  it("drops forks", () => {
+    const items = [item({ repository: { isFork: true } }), item({ id: 2 })];
+    const { items: out, filteredOut } = filterByRepoQuality(items, emptyFilters);
+    expect(out).toHaveLength(1);
+    expect(out[0].id).toBe(2);
+    expect(filteredOut).toBe(1);
+  });
+
+  it("enforces star and fork bounds", () => {
+    const items = [
+      item({ id: 1, repository: { stars: 10, forks: 80 } }),
+      item({ id: 2, repository: { stars: 100, forks: 80 } }),
+      item({ id: 3, repository: { stars: 100, forks: 20 } }),
+    ];
+    const { items: out } = filterByRepoQuality(items, {
+      ...emptyFilters,
+      minStars: 50,
+      maxStars: 150,
+      minForks: 40,
+      maxForks: 100,
+    });
+    expect(out.map((i) => i.id)).toEqual([2]);
+  });
+
+  it("requires CONTRIBUTING when hasContributing", () => {
+    const items = [
+      item({ id: 1, repository: { hasContributing: false } }),
+      item({ id: 2, repository: { hasContributing: true } }),
+    ];
+    const { items: out } = filterByRepoQuality(items, {
+      ...emptyFilters,
+      hasContributing: true,
+    });
+    expect(out.map((i) => i.id)).toEqual([2]);
+  });
+
+  it("onlyOrgs keeps organization-owned repos", () => {
+    const items = [
+      item({ id: 1, repository: { ownerType: "User" } }),
+      item({ id: 2, repository: { ownerType: "Organization" } }),
+    ];
+    const { items: out } = filterByRepoQuality(items, {
+      ...emptyFilters,
+      onlyOrgs: true,
+    });
+    expect(out.map((i) => i.id)).toEqual([2]);
+  });
+
+  it("repoPushedDays drops stale repos", () => {
+    const old = new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString();
+    const items = [
+      item({ id: 1, repository: { pushedAt: old } }),
+      item({ id: 2 }),
+    ];
+    const { items: out } = filterByRepoQuality(items, {
+      ...emptyFilters,
+      repoPushedDays: 30,
+    });
+    expect(out.map((i) => i.id)).toEqual([2]);
   });
 });

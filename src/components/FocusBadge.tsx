@@ -73,6 +73,7 @@ export function FocusBadge({ focusBadge, username }: Props) {
 
       <button
         onClick={() => router.push(loopUrl)}
+        className="gt-focus-cta"
         style={{
           background: "var(--gt-primary)",
           color: "#fff",
@@ -83,15 +84,6 @@ export function FocusBadge({ focusBadge, username }: Props) {
           fontWeight: 700,
           cursor: "pointer",
           whiteSpace: "nowrap",
-          transition: "background 0.15s, transform 0.1s",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.background = "var(--gt-primary-dark)";
-          (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.background = "var(--gt-primary)";
-          (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
         }}
       >
         {config.label === "Galaxy Brain" 

@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/react";
 import Providers from "./providers";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { CANONICAL_DESCRIPTION } from "@/lib/site-copy";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -13,34 +14,41 @@ const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
 });
 
+const SITE_URL = "https://gittrek.vercel.app";
+const OG_HOME_IMAGE = `${SITE_URL}/api/og/home`;
+
 export const metadata: Metadata = {
-  title: "GitTrek — Find the Right Open Source Issue",
-  description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live. Track your GitHub badge progress. Free, open source.",
+  title: "GitTrek — Don't Get Sniped on GitHub Issues",
+  description: CANONICAL_DESCRIPTION,
   keywords: ["github", "open source", "good first issue", "contribute to open source", "github issues", "developer tools", "pull request"],
   authors: [{ name: "Mahendra Shah", url: "https://github.com/mahendra-shah" }],
   creator: "Mahendra Shah",
-  metadataBase: new URL("https://gittrek.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://gittrek.vercel.app",
-    title: "GitTrek — Find the Right Open Source Issue",
-    description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live. Free, open source.",
+    url: SITE_URL,
+    title: "GitTrek — Don't Get Sniped on GitHub Issues",
+    description: CANONICAL_DESCRIPTION,
     siteName: "GitTrek",
     images: [
       {
-        url: "https://gittrek.vercel.app/find-issue.png",
+        url: OG_HOME_IMAGE,
+        secureUrl: OG_HOME_IMAGE,
         width: 1200,
         height: 630,
-        alt: "GitTrek — Find Available Open Source Issues",
+        type: "image/png",
+        alt: "GitTrek — PR competition detection on GitHub issues",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GitTrek — Find the Right Open Source Issue",
-    description: "Find beginner-friendly GitHub issues where no one is already working. Checks for competing PRs live.",
-    images: ["https://gittrek.vercel.app/find-issue.png"],
+    title: "GitTrek — Don't Get Sniped on GitHub Issues",
+    description: CANONICAL_DESCRIPTION,
+    images: [OG_HOME_IMAGE],
+    creator: "@mahendra_xp",
+    site: "@mahendra_xp",
   },
   alternates: {
     canonical: "/",
@@ -69,15 +77,25 @@ export const viewport: Viewport = {
   ],
 };
 
-// JSON-LD Structured Data for AEO (Answer Engine Optimization)
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "GitTrek",
   applicationCategory: "DeveloperApplication",
+  applicationSubCategory: "Open Source Contribution Tool",
   operatingSystem: "Web",
   url: "https://gittrek.vercel.app",
-  description: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time, so you never waste hours on an issue someone else is already solving. Also tracks GitHub achievement badge progress.",
+  description: CANONICAL_DESCRIPTION + " GitTrek detects competing pull requests on GitHub issues in real-time via the GraphQL API. Tracks GitHub achievement badge progress (Pull Shark, Galaxy Brain, Starstruck, YOLO, Public Sponsor).",
+  featureList: [
+    "Real-time PR competition detection on GitHub issues",
+    "GitHub achievement badge progress tracking (Pull Shark, Galaxy Brain, Starstruck, YOLO, Public Sponsor)",
+    "Advanced repository quality filters (stars, forks, maintainer activity, contributing guidelines)",
+    "1-click Quick Missions for badge-hunting (Pull Shark, Galaxy Brain, Pair Extraordinaire)",
+    "Public badge profile pages — look up any GitHub username",
+    "GitHub Discussions search for Galaxy Brain badge",
+    "Guest mode with no sign-in required for basic search",
+  ],
+  screenshot: OG_HOME_IMAGE,
   offers: {
     "@type": "Offer",
     price: "0",
@@ -107,9 +125,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full">
+        <a href="#main-content" className="gt-skip-link">Skip to main content</a>
         <Providers>
           <div style={{ minHeight: "100vh", background: "var(--gt-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
-            {/* Ambient Background Glow (Foggy Glass Lighting) */}
             <div style={{
               position: "absolute",
               top: 0,

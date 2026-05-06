@@ -1,14 +1,34 @@
 import { Metadata } from "next";
+import { CANONICAL_DESCRIPTION, SITE_AI_CONTEXT, SITE_CAREER_HOOK } from "@/lib/site-copy";
+
+const SITE = "https://gittrek.vercel.app";
+const OG_HOME = `${SITE}/api/og/home`;
+
+const ABOUT_DESC = `${CANONICAL_DESCRIPTION} How GraphQL timeline scans work, badge tracking, and how GitTrek differs from static lists.`;
 
 export const metadata: Metadata = {
-  title: "About GitTrek — The Open Source Discovery Engine",
-  description:
-    "Learn how GitTrek finds available GitHub issues, detects competing PRs in real-time, and tracks your GitHub achievement badge progress.",
+  title: "About GitTrek — PR Competition Detection for Open Source Contributors",
+  description: ABOUT_DESC,
   alternates: { canonical: "/about" },
+  openGraph: {
+    type: "website",
+    url: `${SITE}/about`,
+    title: "About GitTrek — PR Competition Detection for Open Source Contributors",
+    description: ABOUT_DESC,
+    siteName: "GitTrek",
+    images: [{ url: OG_HOME, width: 1200, height: 630, alt: "GitTrek — PR competition detection" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About GitTrek — PR Competition Detection",
+    description: ABOUT_DESC,
+    images: [OG_HOME],
+    creator: "@mahendra_xp",
+    site: "@mahendra_xp",
+  },
 };
 
 export default function AboutPage() {
-  // Only the FAQPage schema — SoftwareApplication is already in layout.tsx globally
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -18,7 +38,7 @@ export default function AboutPage() {
         name: "What is GitTrek?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time using the GraphQL API, so you never waste hours on an issue someone else is already solving.",
+          text: "GitTrek is issue discovery with real-time PR competition detection. Before you write code, it shows which GitHub issues already have competing pull requests — something GitHub search and static good-first-issue lists do not surface. It uses the GraphQL API to scan issue timelines, plus smart filters and badge-focused Quick Missions.",
         },
       },
       {
@@ -50,7 +70,55 @@ export default function AboutPage() {
         name: "How is GitTrek different from goodfirstissue.dev or up-for-grabs.net?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "goodfirstissue.dev and up-for-grabs.net show static curated lists — they don't check whether someone is already working on an issue. GitTrek is a live search engine that checks for active PRs, draft PRs, and linked branches on every result in real-time. It also lets you filter by repository freshness, task completion status, and badge-specific contribution goals.",
+          text: "goodfirstissue.dev and up-for-grabs.net show static curated lists — they do not tell you if the issue is already being worked on. GitTrek checks active PRs, draft PRs, and linked branches in real-time, then adds repository quality filters and badge-focused missions so you can choose higher-probability opportunities.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How many pull requests do I need to earn the Pull Shark badge on GitHub?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The Pull Shark badge on GitHub has four tiers based on merged public pull requests: Bronze at 2 merged PRs, Silver at 16 merged PRs, Gold at 128 merged PRs, and Platinum at 1,024 merged PRs. GitTrek tracks your current tier and shows exactly how many more PRs you need for the next level.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What is the Galaxy Brain badge on GitHub?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The Galaxy Brain badge on GitHub is awarded for having answers accepted in GitHub Discussions. Tiers are: Bronze at 1 accepted answer, Silver at 8, Gold at 16, and Platinum at 32 accepted answers. You can earn it by finding unanswered questions in any public repository's Discussions tab and providing helpful answers.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Can I check what GitHub badges someone else has?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. GitTrek has a public badge tracker at gittrek.vercel.app/badges. You can type any GitHub username to view their badge progress — Pull Shark, Starstruck, Galaxy Brain, YOLO, Public Sponsor, and more. No sign-in required to look up another user's public badge progress.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Why did I get sniped on a GitHub issue?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Getting sniped on a GitHub issue means someone else opened a pull request for the same issue while you were working on it. This is extremely common in high-traffic open source repositories. GitTrek prevents this by checking for active, draft, and linked PRs on every issue before you start — surfacing a clear 'Available' or 'Being Claimed' status so you can pick uncontested issues.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How do I find uncontested GitHub issues to contribute to?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "GitTrek is built specifically to find uncontested GitHub issues. It filters for issues with no assignee, checks for competing pull requests in real-time, and lets you sort by freshness. Use the 'Pull Shark' Quick Mission for zero-comment issues with no activity, or filter by 'no assignee' combined with the availability status indicator to find issues that are genuinely open.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is there a beginner guide for open source contributors?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. GitTrek includes a dedicated beginner guide at /guide covering prerequisites, OSS workflow, first PR steps, etiquette, and common mistakes. It is designed for developers starting open source from scratch.",
         },
       },
     ],
@@ -67,7 +135,6 @@ export default function AboutPage() {
         About GitTrek
       </h1>
 
-      {/* Freshness signal — visible to users and crawlers */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12, marginBottom: 32,
         fontSize: 13, color: "var(--gt-text-subtle)",
@@ -80,7 +147,7 @@ export default function AboutPage() {
         }}>
           ● Actively maintained
         </span>
-        <span>Last updated: May 2025</span>
+        <span>Last updated: May 2026</span>
       </div>
 
       <section style={{ marginBottom: 40 }}>
@@ -88,9 +155,13 @@ export default function AboutPage() {
           What is GitTrek?
         </h2>
         <p style={{ color: "var(--gt-text-muted)" }}>
-          GitTrek is an advanced open source discovery engine built for developers who want to
-          contribute effectively. Unlike standard GitHub search, GitTrek provides real-time insights
-          into issue competition, repository quality, and your personal growth as a contributor.
+          {CANONICAL_DESCRIPTION} Smart filters, badge tracking, and free browsing keep contribution momentum high.
+        </p>
+        <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
+          {SITE_AI_CONTEXT}
+        </p>
+        <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
+          {SITE_CAREER_HOOK}
         </p>
         <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
           The core problem GitTrek solves: developers spend hours setting up a codebase and starting
@@ -112,8 +183,9 @@ export default function AboutPage() {
           PR already exists — saving you from hours of wasted work.
         </p>
         <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
-          The check uses a nested GraphQL query that fetches timeline data for up to 20 issues in a
-          single API call, making it highly efficient with GitHub&apos;s rate limits.
+          The search pipeline uses a single GraphQL search fetch per request (with smart overfetch),
+          then applies repository-quality filters server-side. This keeps results relevant while staying
+          efficient with GitHub&apos;s rate limits.
         </p>
       </section>
 
@@ -203,21 +275,103 @@ export default function AboutPage() {
               developers who have a local branch but haven&apos;t pushed or opened a PR yet.
             </p>
           </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              How many pull requests do I need to earn the Pull Shark badge?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              The Pull Shark badge has four tiers: <strong>Bronze at 2 merged PRs</strong>, Silver at 16,
+              Gold at 128, and Platinum at 1,024 merged public pull requests. GitTrek tracks your current
+              count and shows exactly how many more you need for the next tier. Only public repository
+              contributions count toward GitHub badges.
+            </p>
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              What is the Galaxy Brain badge on GitHub?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              Galaxy Brain is earned by having answers accepted in GitHub Discussions. Tiers: 1 / 8 / 16 / 32
+              accepted answers for Bronze through Platinum. GitTrek&apos;s &quot;Galaxy Brain Mission&quot; helps
+              you find unanswered questions in active repositories — the fastest path to earning this badge.
+            </p>
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              Can I check what GitHub badges someone else has?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              Yes. GitTrek has a public badge tracker — go to{" "}
+              <a href="/badges" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+                gittrek.vercel.app/badges
+              </a>{" "}
+              and enter any GitHub username. No sign-in required to view another user&apos;s
+              public badge progress. You can share your badge profile URL with others too.
+            </p>
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              Why did I get sniped on a GitHub issue, and how do I avoid it?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              Getting sniped means someone else opened a PR for the same issue while you were
+              working on it — extremely common in popular repos like React, Next.js, or TypeScript.
+              GitTrek solves this by showing a real-time <strong>✅ Available</strong> or{" "}
+              <strong>⚠️ Being Claimed</strong> status on every issue before you start. Pick issues
+              marked Available to avoid wasting your effort.
+            </p>
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              How do I find uncontested GitHub issues to contribute to?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              GitTrek is built for exactly this. Use the{" "}
+              <a href="/?labels=good+first+issue&noAssignee=true" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+                Pull Shark Quick Mission
+              </a>{" "}
+              to instantly filter for zero-comment, unassigned issues with no competing PRs. You
+              can also combine &quot;No assignee&quot; + &quot;Active maintainer&quot; filters to find fresh issues
+              in repos where your PR is likely to get reviewed quickly.
+            </p>
+          </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              Is there a dedicated beginner guide?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              Yes. Read the{" "}
+              <a href="/guide" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+                Beginner&apos;s Guide
+              </a>{" "}
+              for prerequisites, how OSS communities work, first PR steps, communication etiquette, and
+              common mistakes to avoid.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Changelog / freshness section */}
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: "var(--gt-text)" }}>
           Recent Updates
         </h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {([
-            { date: "May 2025", note: "Unified badge API — all 5 badge types now fetched in 2 concurrent GraphQL calls, reducing dashboard load time by ~80%." },
-            { date: "May 2025", note: "Added per-IP rate limiting for guest users to protect API quota and ensure fair access." },
-            { date: "May 2025", note: "Discussion search — find unanswered GitHub Discussions to earn the Galaxy Brain badge." },
-            { date: "Apr 2025", note: "Quick Missions — 1-click presets for badge-hunting (Pull Shark, Galaxy Brain, Pair Extraordinaire)." },
-            { date: "Apr 2025", note: "Public badge tracker — look up any GitHub username to view their badge progress." },
+            { date: "May 2026", note: "Search and filter reliability update — fixed discussions/issues tab consistency and zero-replies filtering behavior." },
+            { date: "May 2026", note: "Added one-click filter reset and improved filter UX with sticky action controls." },
+            { date: "May 2026", note: "Shipped a dedicated beginner guide at /guide for first-time open source contributors." },
+            { date: "May 2026", note: "Improved guest experience — blurred PR availability preview with sign-in prompt so the core value is visible immediately." },
+            { date: "May 2026", note: "Header and modal responsive fixes — GitTrek is now fully usable on all screen sizes." },
+            { date: "May 2026", note: "Unified badge API — all 5 badge types now fetched in 2 concurrent GraphQL calls, reducing dashboard load time by ~80%." },
+            { date: "May 2026", note: "Added per-IP rate limiting for guest users to protect API quota and ensure fair access." },
+            { date: "Apr 2026", note: "Discussion search — find unanswered GitHub Discussions to earn the Galaxy Brain badge." },
+            { date: "Apr 2026", note: "Quick Missions — 1-click presets for badge-hunting (Pull Shark, Galaxy Brain, Pair Extraordinaire)." },
           ] as const).map(({ date, note }, i) => (
             <div key={i} style={{
               display: "flex", gap: 16, padding: "12px 16px",

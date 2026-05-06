@@ -5,7 +5,6 @@ import { type ShareableCardData, TIER_LABELS } from "@/lib/github/badges";
 
 type Props = {
   data: ShareableCardData;
-  /** Ref forwarded from the parent so ShareButton can trigger html2canvas on it. */
   cardRef: React.RefObject<HTMLDivElement | null>;
 };
 
@@ -33,7 +32,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* Subtle grid texture overlay */}
       <div
         style={{
           position: "absolute",
@@ -44,7 +42,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         }}
       />
 
-      {/* Top-right accent glow */}
       <div
         style={{
           position: "absolute",
@@ -58,7 +55,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         }}
       />
 
-      {/* ── User header ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28, position: "relative" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -78,7 +74,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
           </div>
         </div>
 
-        {/* GitTrek branding pill */}
         <div
           style={{
             marginLeft: "auto",
@@ -96,7 +91,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         </div>
       </div>
 
-      {/* ── Earned badges ── */}
       {earnedBadges.length > 0 ? (
         <div style={{ marginBottom: 24, position: "relative" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(230,237,243,0.4)", letterSpacing: "0.10em", textTransform: "uppercase", marginBottom: 12 }}>
@@ -145,7 +139,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         </div>
       )}
 
-      {/* ── Focus next ── */}
       {focusBadge && (
         <div
           style={{
@@ -179,7 +172,6 @@ export function ShareableBadgeCard({ data, cardRef }: Props) {
         </div>
       )}
 
-      {/* ── Footer ── */}
       <div
         style={{
           borderTop: "1px solid rgba(255,255,255,0.07)",
