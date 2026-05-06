@@ -21,7 +21,6 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     };
   }
 
-  // We use the OG endpoint to generate a generic preview for the user if we don't know their best badge yet
   const ogImageUrl = `https://gittrek.vercel.app/api/og/badge?user=${user}&badge=pullShark`;
 
   return {
@@ -71,7 +70,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const signedInUser = await getSignedInUser();
 
-  // Determine which username to show badges for
   const targetUsername = params.user ?? signedInUser ?? null;
   const isOwnProfile = targetUsername === signedInUser;
 
@@ -87,7 +85,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         gap: 28,
       }}
     >
-      {/* ── Page header ── */}
       <div>
         <h1
           style={{
@@ -104,13 +101,11 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* ── Any-user lookup bar ── */}
       <UserLookup
         initialUsername={targetUsername ?? ""}
         signedInUser={signedInUser}
       />
 
-      {/* ── Sign-in CTA ── */}
       {!targetUsername && (
         <div
           style={{
@@ -156,7 +151,6 @@ export default async function BadgesPage({ searchParams }: PageProps) {
         <BadgeDashboard username={targetUsername} isOwnProfile={isOwnProfile} />
       )}
 
-      {/* ── Viral CTA Banner ── */}
       {!isOwnProfile && targetUsername && (
         <div style={{
           position: "sticky", bottom: 20, zIndex: 100,

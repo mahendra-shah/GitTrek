@@ -1,4 +1,5 @@
 import { Star, GitFork, MessageSquare, Clock, CheckSquare } from "lucide-react";
+import { formatViewerReasons, type ViewerSummary } from "@/lib/viewer-summary";
 
 export type PRStatus = {
   status: "safe" | "open_pr" | "draft_pr" | "linked_branch" | "checking" | "error" | "guest";
@@ -30,6 +31,8 @@ export type IssueItem = {
   tasks: { completed: number; total: number } | null;
   prStatus: PRStatus;
   isDiscussion?: boolean;
+  /** Present when signed in — whether you already engaged with this issue/discussion */
+  viewer?: ViewerSummary | null;
 };
 
 function fmt(n: number) {
@@ -61,7 +64,6 @@ function PRBadge({ s }: { s: PRStatus }) {
         background: "none", border: "none", padding: 0, cursor: "pointer",
       }}
     >
-      {/* Blurred hint of what the badge looks like */}
       <span
         style={{
           display: "inline-flex", alignItems: "center", gap: 5,
@@ -74,7 +76,6 @@ function PRBadge({ s }: { s: PRStatus }) {
       >
         ✅ Available
       </span>
-      {/* Unlock prompt below */}
       <span style={{
         fontSize: 10, fontWeight: 700, color: "var(--gt-primary)",
         letterSpacing: "0.02em", whiteSpace: "nowrap",
@@ -134,6 +135,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
     : repoAgeDays <= 30
     ? `active ${repoAgeDays}d ago`
     : null;
+  const viewerHint = issue.viewer?.engaged ? formatViewerReasons(issue.viewer.reasons) : "";
 
   return (
     <article
@@ -149,7 +151,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
     >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          {/* Repo name */}
           <a
             href={issue.repository.htmlUrl}
             target="_blank"
@@ -159,7 +160,26 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
           >
             {issue.repository.fullName}
           </a>
-          {/* Repo freshness signal */}
+          {issue.viewer?.engaged && (
+            <span
+              title={`You're involved: ${viewerHint}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                marginLeft: 8,
+                gap: 4,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 7px",
+                borderRadius: 5,
+                background: "rgba(99,102,241,0.10)",
+                color: "#6366f1",
+                border: "1px solid rgba(99,102,241,0.25)",
+              }}
+            >
+              👋 You engaged
+            </span>
+          )}
           {repoLastActiveText && (
             <span style={{
               display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700,
@@ -172,7 +192,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
             </span>
           )}
 
-          {/* Title */}
           <h3 style={{ margin: "6px 0 12px", lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontWeight: 700, fontSize: 16 }}>
             {isDiscussion && (
               <span style={{
@@ -203,7 +222,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
             </span>
           </h3>
 
-          {/* Labels */}
           <div className="flex flex-wrap gap-2 mb-4">
             {issue.labels.slice(0, 5).map((label, i) => {
               const isApplied = appliedLabels.length > 0 
@@ -237,7 +255,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
             })}
           </div>
 
-          {/* Stats row */}
           <div className="flex flex-wrap items-center gap-4" style={{ fontSize: 13, color: "var(--gt-text-muted)" }}>
             {hasRepoData ? (
               <>
@@ -278,7 +295,6 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
           </div>
         </div>
 
-        {/* PR badge — only for issues, not discussions */}
         <div className="flex-shrink-0 pt-1">
           {!isDiscussion && <PRBadge s={issue.prStatus} />}
           {isDiscussion && (

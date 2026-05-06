@@ -6,7 +6,6 @@ import { ShareBadgeModal } from "./ShareBadgeModal";
 
 type Props = {
   badge: BadgeResult;
-  /** Issue Finder pre-fill URL for "The Loop" CTA. null = no CTA shown. */
   loopUrl?: string | null;
   username: string;
   isHighlighted?: boolean;
@@ -72,7 +71,6 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
       style={cardStyle}
       aria-label={`${config.label} badge — ${tierLabel}`}
     >
-      {/* ── Header: Icon + Title + Tier Pill ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
           <div
@@ -124,15 +122,12 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         </div>
       </div>
 
-      {/* ── Description ── */}
       <p style={{ margin: 0, fontSize: 13, color: "var(--gt-text-muted)", lineHeight: 1.5 }}>
         {config.description}
       </p>
 
-      {/* ── Progress Section ── */}
       {!isNotTrackable && (
         <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
-          {/* Progress bar */}
           <div
             style={{
               height: 6,
@@ -156,7 +151,6 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
             />
           </div>
 
-          {/* Progress text */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13 }}>
             <span style={{ color: "var(--gt-text)" }}>
               <span style={{ fontWeight: 600 }}>{fmtNum(current)}</span>
@@ -181,7 +175,6 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         </div>
       )}
 
-      {/* ── The Loop CTA ── */}
       {loopUrl && !isMaxed && !isNotTrackable && (
         <a
           href={loopUrl}
@@ -207,7 +200,6 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         </a>
       )}
 
-      {/* ── "What breaks this?" honesty layer & Share Button ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
         <details style={{ flex: 1 }}>
           <summary
@@ -284,7 +276,6 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
   );
 }
 
-/** Pixel-perfect skeleton — matches BadgeCard dimensions to prevent layout shift. */
 export function BadgeCardSkeleton() {
   const pulse: React.CSSProperties = {
     background: "var(--gt-card-hover)",

@@ -42,7 +42,6 @@ function writeCache(key: string, data: BadgeResult[]) {
   }
 }
 
-// ── Client Component ───────────────────────────────────────────────────────────
 export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const cacheKey = `gittrek-badges-v2-${username}`;
 
@@ -53,7 +52,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
-    // Read the highlight param from the URL if present
     const params = new URLSearchParams(window.location.search);
     setHighlightKey(params.get("highlight"));
   }, []);
@@ -62,7 +60,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
     async (forceRefresh = false) => {
       setIsRefreshing(true);
 
-      // Check cache first (skip on force refresh)
       if (!forceRefresh) {
         const cached = readCache(cacheKey);
         if (cached) {
@@ -72,8 +69,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         }
       }
 
-      // Fetch all badge data from the unified endpoint.
-      // If the user doesn't exist, the endpoint returns 404 — no preflight check needed.
       const res = await fetch(`/api/github/badges?username=${encodeURIComponent(username)}`);
 
       if (res.status === 404) {
@@ -125,7 +120,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
 
       setResults(newResults);
 
-      // 4. Cache for own profile only
       if (isOwnProfile) {
         writeCache(cacheKey, newResults);
       }
@@ -135,7 +129,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
     [username, isOwnProfile, cacheKey]
   );
 
-  // Reset on username change and kick off fresh fetch
   useEffect(() => {
     setNotFound(false);
     setFetchError(false);
@@ -202,7 +195,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* ── User header ── */}
       <div
         style={{
           display: "flex",
@@ -233,7 +225,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
           )}
         </div>
 
-        {/* ── Refresh button ── */}
         <button
           id="badge-refresh-btn"
           onClick={() => fetchAll(true)}
@@ -262,10 +253,8 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         </button>
       </div>
 
-      {/* ── Focus coaching card ── */}
       {focus && <FocusBadge focusBadge={focus} username={username} />}
 
-      {/* ── Badge grid ── */}
       <div style={{ columnWidth: 340, columnGap: 14 }}>
         {results.map((badge, idx) => (
           <BadgeCard
@@ -279,7 +268,6 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         ))}
       </div>
 
-      {/* ── Data disclaimer ── */}
       <p style={{ fontSize: 12, color: "var(--gt-text-subtle)", textAlign: "center", margin: "8px 0 0", lineHeight: 1.6 }}>
         All counts are based on <strong>public activity only</strong>. Tier thresholds are community-verified,
         not officially documented by GitHub. Data cached for 1 hour —{" "}

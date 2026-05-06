@@ -27,7 +27,6 @@ a {
   outline-offset: 2px;
 }
 
-/* ── Skip link ── */
 .gt-skip-link {
   position: absolute;
   top: -100%;
@@ -46,7 +45,6 @@ a {
   top: 0;
 }
 
-/* ── Responsive header ── */
 .gt-header-inner {
   display: flex;
   align-items: center;
@@ -100,10 +98,9 @@ a {
   }
 }
 
-/* ── Responsive layout ── */
 .gt-layout-grid {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 32px;
 }
 
@@ -112,6 +109,32 @@ a {
   top: 80px;
   max-height: calc(100vh - 100px);
   overflow-y: auto;
+  overflow-x: visible;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.gt-filter-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.gt-filter-scroll {
+  flex: 1;
+  min-height: auto;
+  overflow: visible;
+}
+
+.gt-filter-submit-wrap {
+  position: sticky;
+  bottom: 0;
+  margin-top: 12px;
+  padding: 12px 0 4px;
+  background: linear-gradient(180deg, transparent 0%, var(--gt-sidebar) 24%);
+  border-top: 1px solid var(--gt-border);
 }
 
 .gt-mobile-filter-btn {
@@ -168,7 +191,60 @@ a {
   }
 }
 
-/* ── CSS hover/focus utilities (replaces JS onMouseEnter/Leave) ── */
+.gt-nav-link:hover {
+  color: var(--gt-text) !important;
+  background: var(--gt-card-hover) !important;
+}
+
+/* Force dark background regardless of system theme */
+.gt-footer {
+  --gt-footer-bg: #090910;
+  color-scheme: dark;
+}
+
+/* Brand + links two-column row */
+.gt-footer-top {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 64px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 0;
+}
+
+/* Links side: two even columns */
+.gt-footer-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+.gt-footer-brand {
+  max-width: 340px;
+}
+
+/* Link hover */
+.gt-footer-link:hover {
+  color: rgba(255,255,255,0.9) !important;
+}
+
+/* Social pill hover */
+.gt-footer-social:hover {
+  background: rgba(249,115,22,0.12) !important;
+  border-color: rgba(249,115,22,0.30) !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+
+@media (max-width: 768px) {
+  .gt-footer-top {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .gt-footer-brand {
+    max-width: 100%;
+  }
+}
+
 .gt-card-interactive {
   transition: box-shadow 0.2s, border-color 0.2s;
 }
@@ -200,6 +276,43 @@ a {
   border-color: var(--gt-primary) !important;
   outline: 2px solid var(--gt-primary);
   outline-offset: 2px;
+}
+
+/* Homepage PR competition legend (aligns with IssueCard badges) */
+.gt-pr-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+@media (max-width: 720px) {
+  .gt-pr-legend {
+    grid-template-columns: 1fr;
+  }
+}
+.gt-pr-legend-card {
+  background: var(--gt-card);
+  border: 1px solid var(--gt-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--gt-shadow);
+}
+.gt-pr-legend-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  margin-bottom: 8px;
+}
+.gt-pr-legend-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--gt-text-muted);
 }
 
 .gt-loop-cta {

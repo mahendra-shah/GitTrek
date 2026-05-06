@@ -7,6 +7,10 @@ import {
   filterByRepoQuality,
   IssueSearchItem,
 } from "@/lib/github/search";
+import type {
+  ViewerEngagementReason,
+  ViewerSummary,
+} from "@/lib/viewer-summary";
 import { createRateLimiter, getClientIp } from "@/lib/rate-limit";
 import { botTokenPool } from "@/lib/github/token-pool";
 
@@ -18,16 +22,7 @@ export const dynamic = "force-dynamic";
 const API_VERSION = "2022-11-28";
 const API_BASE = "https://api.github.com";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Server-side result cache (Fix A)
-//
-// In-memory Map keyed by a hash of the filter params (excluding page/cursor).
-// TTL: 5 minutes. Max 200 entries (LRU-style eviction).
-//
-// Caveat: Vercel may run multiple function instances, each with its own cache.
-// This still yields a high hit rate for warm instances under moderate traffic.
-// For cross-instance caching, upgrade to unstable_cache or Vercel KV post-launch.
-// ─────────────────────────────────────────────────────────────────────────────
+// In-memory LRU-ish cache per filter hash (no page/cursor). 5m TTL, max 200. Per-instance only on serverless.
 type CacheEntry = { data: unknown; expiresAt: number };
 const resultCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -85,9 +80,54 @@ const FilterSchema = z.object({
   type: z.enum(["issue", "discussion"]).optional().default("issue"),
   activeMaintainer: z.boolean().optional().default(false),
   pairingRequested: z.boolean().optional().default(false),
+  /** Logged-in viewer login — used only to label PR/assignee engagement (must match token) */
+  viewerLogin: z.string().trim().max(39).optional(),
 });
 
 type Filters = z.infer<typeof FilterSchema>;
+
+function buildViewerSummary(
+  viewerLogin: string | undefined,
+  node: any,
+  isDiscussion: boolean
+): ViewerSummary | null {
+  if (!viewerLogin) return null;
+  const lc = viewerLogin.toLowerCase();
+  const reasons: ViewerEngagementReason[] = [];
+  const commentNodes = node.comments?.nodes || [];
+  const viewerCommented = commentNodes.some(
+    (c: { author?: { login?: string } }) => c.author?.login?.toLowerCase() === lc
+  );
+
+  if (isDiscussion) {
+    if (node.viewerDidAuthor) reasons.push("authored");
+    if (node.viewerHasUpvoted) reasons.push("upvoted");
+    if (viewerCommented) reasons.push("commented");
+    return { engaged: reasons.length > 0, reasons };
+  }
+
+  if (node.viewerDidAuthor) reasons.push("authored");
+  if (viewerCommented) reasons.push("commented");
+  const assignees = node.assignees?.nodes || [];
+  if (assignees.some((a: { login?: string }) => a.login?.toLowerCase() === lc)) {
+    reasons.push("assigned");
+  }
+  const timelineNodes = node.timelineItems?.nodes || [];
+  for (const n of timelineNodes) {
+    let authorLogin: string | undefined;
+    if (n.__typename === "CrossReferencedEvent" && n.source?.__typename === "PullRequest") {
+      authorLogin = n.source?.author?.login;
+    } else if (n.__typename === "ConnectedEvent" && n.subject?.__typename === "PullRequest") {
+      authorLogin = n.subject?.author?.login;
+    }
+    if (authorLogin && authorLogin.toLowerCase() === lc) {
+      reasons.push("openedPR");
+      break;
+    }
+  }
+
+  return { engaged: reasons.length > 0, reasons };
+}
 
 function getRateLimit(headers: Headers) {
   return {
@@ -111,9 +151,13 @@ const GRAPHQL_ISSUE_QUERY = `
           createdAt
           updatedAt
           body
-          comments { totalCount }
+          viewerDidAuthor
+          comments(first: 10) {
+            totalCount
+            nodes { author { login } }
+          }
           labels(first: 10) { nodes { name } }
-          assignees(first: 1) { nodes { login } }
+          assignees(first: 10) { nodes { login } }
           repository {
             nameWithOwner
             stargazerCount
@@ -127,8 +171,12 @@ const GRAPHQL_ISSUE_QUERY = `
           timelineItems(first: 5, itemTypes: [CROSS_REFERENCED_EVENT, CONNECTED_EVENT]) {
             nodes {
               __typename
-              ... on CrossReferencedEvent { source { __typename ... on PullRequest { state isDraft } } }
-              ... on ConnectedEvent { subject { __typename ... on PullRequest { state isDraft } } }
+              ... on CrossReferencedEvent {
+                source { __typename ... on PullRequest { state isDraft author { login } } }
+              }
+              ... on ConnectedEvent {
+                subject { __typename ... on PullRequest { state isDraft author { login } } }
+              }
             }
           }
           linkedBranches(first: 5) { totalCount }
@@ -152,7 +200,12 @@ const GRAPHQL_DISCUSSION_QUERY = `
           url
           createdAt
           updatedAt
-          comments { totalCount }
+          viewerDidAuthor
+          viewerHasUpvoted
+          comments(first: 10) {
+            totalCount
+            nodes { author { login } }
+          }
           labels(first: 10) { nodes { name } }
           repository {
             nameWithOwner
@@ -278,6 +331,7 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
       prStatus: isDiscussion
         ? { status: "safe" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 }
         : determinePRStatus(node),
+      viewer: buildViewerSummary(filters.viewerLogin, node, isDiscussion),
     };
   });
 
@@ -359,7 +413,8 @@ async function searchREST(q: string, filters: Filters) {
         stars: 0, forks: 0, pushedAt: new Date(0).toISOString(), isFork: false,
         ownerType: item.owner?.type || "User"
       },
-      prStatus: { status: "guest" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 }
+      prStatus: { status: "guest" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 },
+      viewer: null,
     };
   });
 
@@ -382,9 +437,7 @@ export async function POST(request: Request) {
 
     const filters = { ...parsed.data }; // mutable copy — we adjust perPage/labels below
 
-    // Resolve the token to use for this request:
-    // • Logged-in user   → their own OAuth token (5k pts/hour, isolated)
-    // • Guest / no login → pick from the bot token pool (exhaustion-aware)
+    // Signed-in: user token. Guest: bot pool (rotation on exhaustion).
     const userToken = await getToken();
     const guestToken = userToken ? null : botTokenPool.selectToken();
     const token = userToken ?? guestToken ?? undefined;
@@ -419,18 +472,15 @@ export async function POST(request: Request) {
       });
     }
 
-    // ─── Cache lookup (Fix A) ────────────────────────────────────────────────
-    // Only cache first-page results (page 1, no cursor) — these are the most
-    // commonly re-requested and the most expensive.
+    // Guest first page only (auth payloads are viewer-specific).
     const isFirstPage = filters.page === 1 && !filters.cursor;
-    const cacheKey = isFirstPage ? makeCacheKey(filters) : null;
+    const cacheKey = isFirstPage && !userToken ? makeCacheKey(filters) : null;
     if (cacheKey) {
       const cached = cacheGet(cacheKey);
       if (cached) {
         return NextResponse.json(cached);
       }
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     const isDiscussion = filters.type === "discussion";
     let validItems: any[] = [];
@@ -439,16 +489,10 @@ export async function POST(request: Request) {
 
     try {
       if (token) {
-        // ─── Fix B: Single-fetch strategy ────────────────────────────────────
-        // Single fetch of perPage × 2.5 (capped at 50). One GitHub round-trip.
-        // ─────────────────────────────────────────────────────────────────────
+        // One GraphQL fetch: ~2.5× page size, cap 50, then trim after quality filters.
         const fetchSize = Math.min(Math.ceil(filters.perPage * 2.5), 50);
 
-        // ─── Fix C: Token pool retry loop ─────────────────────────────────────
-        // Try the resolved token first. If it’s a guest bot token and it hits
-        // a rate limit, mark it exhausted and immediately retry with the next
-        // available token. Fully transparent to the user.
-        // ─────────────────────────────────────────────────────────────────────
+        // Guests: try pool tokens in order; exhaust on 429 and continue.
         const tokensToTry: string[] = userToken
           ? [userToken]
           : botTokenPool.getAvailableTokens();
@@ -538,18 +582,13 @@ export async function POST(request: Request) {
       rate_limit: searchResult.rateLimit
     };
 
-    // Store in cache if this is a first-page request (Fix A)
     if (cacheKey) {
       cacheSet(cacheKey, responseData);
     }
 
     const response = NextResponse.json(responseData);
 
-    // ─── Fix D: CDN Caching ──────────────────────────────────────────────────
-    // Only cache guest (unauthenticated) searches on the CDN.
-    // s-maxage=300 (5 mins) tells Vercel's CDN to cache the result.
-    // stale-while-revalidate=600 (10 mins) allows serving a stale result while 
-    // fetching a fresh one in the background.
+    // CDN: public only for guests; never cache signed-in results.
     if (!userToken) {
       response.headers.set(
         "Cache-Control",

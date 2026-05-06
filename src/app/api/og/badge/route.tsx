@@ -4,8 +4,7 @@ import { BADGE_CONFIG, TIER_LABELS, type BadgeKey } from "@/lib/github/badges";
 
 export const runtime = "edge";
 
-// Satori note: width/height on <img> must be numbers in the style prop, not HTML attrs.
-// z-index is NOT supported. position: absolute is supported but needs a positioned parent.
+// Satori: keep image dimensions in style props.
 
 const TIER_PALETTE = {
   0: { primary: "#888888", secondary: "#444444", glow: "rgba(136,136,136,0.3)", label: "NOT EARNED" },
@@ -29,7 +28,6 @@ export async function GET(req: NextRequest) {
     const palette = TIER_PALETTE[tier];
     const hasEarned = tier > 0;
 
-    // Build share text line
     const statsLine = hasEarned
       ? `${currentParam} ${badgeConfig.contributionNoun}${nextParam ? ` · Next tier at ${nextParam}` : " · Max tier!"}`
       : `Start contributing to earn this badge`;
@@ -41,13 +39,11 @@ export async function GET(req: NextRequest) {
             display: "flex",
             width: 1200,
             height: 630,
-            // Jet-black base
             background: "#06080C",
             fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
             position: "relative",
           }}
         >
-          {/* ── Left Panel: Vivid colour block ── */}
           <div
             style={{
               display: "flex",
@@ -63,7 +59,6 @@ export async function GET(req: NextRequest) {
               flexShrink: 0,
             }}
           >
-            {/* Radial glow behind the badge */}
             <div
               style={{
                 position: "absolute",
@@ -80,7 +75,6 @@ export async function GET(req: NextRequest) {
               }}
             />
 
-            {/* Badge image – width/height MUST be in style not attrs for Satori */}
             {badgeConfig.image ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -97,7 +91,6 @@ export async function GET(req: NextRequest) {
               <span style={{ fontSize: 160, lineHeight: 1 }}>{badgeConfig.emoji}</span>
             )}
 
-            {/* Tier Badge pill below image */}
             <div
               style={{
                 display: "flex",
@@ -115,7 +108,6 @@ export async function GET(req: NextRequest) {
             </div>
           </div>
 
-          {/* ── Right Panel: Tier-colored border + content ── */}
           <div
             style={{
               display: "flex",
@@ -126,7 +118,6 @@ export async function GET(req: NextRequest) {
               borderLeft: `4px solid ${hasEarned ? palette.primary : "#222"}`,
             }}
           >
-            {/* Top: ACHIEVEMENT UNLOCKED label */}
             {hasEarned && (
               <div
                 style={{
@@ -145,7 +136,6 @@ export async function GET(req: NextRequest) {
               </div>
             )}
 
-            {/* Middle: Badge Name */}
             <div
               style={{
                 display: "flex",
@@ -175,7 +165,6 @@ export async function GET(req: NextRequest) {
               </div>
             </div>
 
-            {/* Stats box */}
             <div
               style={{
                 display: "flex",
@@ -187,7 +176,6 @@ export async function GET(req: NextRequest) {
                 padding: "24px 32px",
               }}
             >
-              {/* User */}
               <div
                 style={{
                   display: "flex",
@@ -210,7 +198,6 @@ export async function GET(req: NextRequest) {
                 <span style={{ fontSize: 30, color: "#fff", fontWeight: 700 }}>@{user}</span>
               </div>
 
-              {/* Stats line */}
               <div
                 style={{
                   fontSize: 22,
@@ -223,7 +210,6 @@ export async function GET(req: NextRequest) {
               </div>
             </div>
 
-            {/* Bottom: GitTrek branding */}
             <div
               style={{
                 display: "flex",

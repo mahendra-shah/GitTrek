@@ -1,14 +1,34 @@
 import { Metadata } from "next";
+import { CANONICAL_DESCRIPTION, SITE_AI_CONTEXT, SITE_CAREER_HOOK } from "@/lib/site-copy";
+
+const SITE = "https://gittrek.vercel.app";
+const OG_HOME = `${SITE}/api/og/home`;
+
+const ABOUT_DESC = `${CANONICAL_DESCRIPTION} How GraphQL timeline scans work, badge tracking, and how GitTrek differs from static lists.`;
 
 export const metadata: Metadata = {
-  title: "About GitTrek — The Open Source Discovery Engine",
-  description:
-    "Learn how GitTrek finds available GitHub issues, detects competing PRs in real-time, and tracks your GitHub achievement badge progress.",
+  title: "About GitTrek — PR Competition Detection for Open Source Contributors",
+  description: ABOUT_DESC,
   alternates: { canonical: "/about" },
+  openGraph: {
+    type: "website",
+    url: `${SITE}/about`,
+    title: "About GitTrek — PR Competition Detection for Open Source Contributors",
+    description: ABOUT_DESC,
+    siteName: "GitTrek",
+    images: [{ url: OG_HOME, width: 1200, height: 630, alt: "GitTrek — PR competition detection" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About GitTrek — PR Competition Detection",
+    description: ABOUT_DESC,
+    images: [OG_HOME],
+    creator: "@mahendra_xp",
+    site: "@mahendra_xp",
+  },
 };
 
 export default function AboutPage() {
-  // Only the FAQPage schema — SoftwareApplication is already in layout.tsx globally
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -18,7 +38,7 @@ export default function AboutPage() {
         name: "What is GitTrek?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "GitTrek is a live search engine for open source contributors. It detects competing pull requests on GitHub issues in real-time using the GraphQL API, so you never waste hours on an issue someone else is already solving.",
+          text: "GitTrek is issue discovery with real-time PR competition detection. Before you write code, it shows which GitHub issues already have competing pull requests — something GitHub search and static good-first-issue lists do not surface. It uses the GraphQL API to scan issue timelines, plus smart filters and badge-focused Quick Missions.",
         },
       },
       {
@@ -50,7 +70,7 @@ export default function AboutPage() {
         name: "How is GitTrek different from goodfirstissue.dev or up-for-grabs.net?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "goodfirstissue.dev and up-for-grabs.net show static curated lists — they don't check whether someone is already working on an issue. GitTrek is a live search engine that checks for active PRs, draft PRs, and linked branches on every result in real-time. It also lets you filter by repository freshness, task completion status, and badge-specific contribution goals.",
+          text: "goodfirstissue.dev and up-for-grabs.net show static curated lists — they do not tell you if the issue is already being worked on. GitTrek checks active PRs, draft PRs, and linked branches in real-time, then adds repository quality filters and badge-focused missions so you can choose higher-probability opportunities.",
         },
       },
       {
@@ -93,6 +113,14 @@ export default function AboutPage() {
           text: "GitTrek is built specifically to find uncontested GitHub issues. It filters for issues with no assignee, checks for competing pull requests in real-time, and lets you sort by freshness. Use the 'Pull Shark' Quick Mission for zero-comment issues with no activity, or filter by 'no assignee' combined with the availability status indicator to find issues that are genuinely open.",
         },
       },
+      {
+        "@type": "Question",
+        name: "Is there a beginner guide for open source contributors?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. GitTrek includes a dedicated beginner guide at /guide covering prerequisites, OSS workflow, first PR steps, etiquette, and common mistakes. It is designed for developers starting open source from scratch.",
+        },
+      },
     ],
   };
 
@@ -107,7 +135,6 @@ export default function AboutPage() {
         About GitTrek
       </h1>
 
-      {/* Freshness signal — visible to users and crawlers */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12, marginBottom: 32,
         fontSize: 13, color: "var(--gt-text-subtle)",
@@ -128,9 +155,13 @@ export default function AboutPage() {
           What is GitTrek?
         </h2>
         <p style={{ color: "var(--gt-text-muted)" }}>
-          GitTrek is an advanced open source discovery engine built for developers who want to
-          contribute effectively. Unlike standard GitHub search, GitTrek provides real-time insights
-          into issue competition, repository quality, and your personal growth as a contributor.
+          {CANONICAL_DESCRIPTION} Smart filters, badge tracking, and free browsing keep contribution momentum high.
+        </p>
+        <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
+          {SITE_AI_CONTEXT}
+        </p>
+        <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
+          {SITE_CAREER_HOOK}
         </p>
         <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
           The core problem GitTrek solves: developers spend hours setting up a codebase and starting
@@ -152,8 +183,9 @@ export default function AboutPage() {
           PR already exists — saving you from hours of wasted work.
         </p>
         <p style={{ color: "var(--gt-text-muted)", marginTop: 12 }}>
-          The check uses a nested GraphQL query that fetches timeline data for up to 20 issues in a
-          single API call, making it highly efficient with GitHub&apos;s rate limits.
+          The search pipeline uses a single GraphQL search fetch per request (with smart overfetch),
+          then applies repository-quality filters server-side. This keeps results relevant while staying
+          efficient with GitHub&apos;s rate limits.
         </p>
       </section>
 
@@ -308,16 +340,32 @@ export default function AboutPage() {
               in repos where your PR is likely to get reviewed quickly.
             </p>
           </div>
+
+          <div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8, color: "var(--gt-text)" }}>
+              Is there a dedicated beginner guide?
+            </h3>
+            <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
+              Yes. Read the{" "}
+              <a href="/guide" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+                Beginner&apos;s Guide
+              </a>{" "}
+              for prerequisites, how OSS communities work, first PR steps, communication etiquette, and
+              common mistakes to avoid.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Changelog / freshness section */}
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16, color: "var(--gt-text)" }}>
           Recent Updates
         </h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {([
+            { date: "May 2026", note: "Search and filter reliability update — fixed discussions/issues tab consistency and zero-replies filtering behavior." },
+            { date: "May 2026", note: "Added one-click filter reset and improved filter UX with sticky action controls." },
+            { date: "May 2026", note: "Shipped a dedicated beginner guide at /guide for first-time open source contributors." },
             { date: "May 2026", note: "Improved guest experience — blurred PR availability preview with sign-in prompt so the core value is visible immediately." },
             { date: "May 2026", note: "Header and modal responsive fixes — GitTrek is now fully usable on all screen sizes." },
             { date: "May 2026", note: "Unified badge API — all 5 badge types now fetched in 2 concurrent GraphQL calls, reducing dashboard load time by ~80%." },

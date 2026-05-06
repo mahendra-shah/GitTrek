@@ -29,7 +29,6 @@ const TIER_META = {
   4: { primary: "#E8E6E1", secondary: "#7A7770", glow: "rgba(232,230,225,0.35)", bg: "rgba(232,230,225,0.07)", label: "PLATINUM" },
 } as const;
 
-/** Inline mini-card that mimics the OG image layout — no network request, always renders. */
 function MiniCardPreview({
   badge,
   username,
@@ -56,7 +55,6 @@ function MiniCardPreview({
         height: 110,
       }}
     >
-      {/* Left: gradient panel */}
       <div
         style={{
           width: 100,
@@ -97,7 +95,6 @@ function MiniCardPreview({
         </span>
       </div>
 
-      {/* Right: content */}
       <div
         style={{
           flex: 1,
@@ -140,11 +137,9 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
 
   const close = useCallback(() => onClose(), [onClose]);
 
-  // Store previously focused element and restore on close
   useEffect(() => {
     if (isOpen) {
       prevFocusRef.current = document.activeElement as HTMLElement;
-      // Focus the close button after modal renders
       requestAnimationFrame(() => {
         const closeBtn = modalRef.current?.querySelector("[data-autofocus]") as HTMLElement;
         closeBtn?.focus();
@@ -154,7 +149,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
     }
   }, [isOpen]);
 
-  // Keyboard: Escape to close + Tab focus trap
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
@@ -180,7 +174,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
   const tier = Math.min(4, Math.max(0, badge.tier)) as 0 | 1 | 2 | 3 | 4;
   const m = TIER_META[tier];
 
-  // The shareable profile URL — includes ?highlight= so the landing page spotlights the specific badge
   const profileUrl = `${baseUrl}/badges?user=${encodeURIComponent(username)}&highlight=${badge.key}`;
 
   const tweetText = encodeURIComponent(
@@ -200,7 +193,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
 
   return createPortal(
     <>
-      {/* Backdrop — acts as close button for pointer users */}
       <div
         onClick={close}
         style={{
@@ -211,7 +203,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
         aria-hidden="true"
       />
 
-      {/* Dialog container */}
       <div
         style={{
           position: "fixed", inset: 0, zIndex: 10000,
@@ -238,10 +229,8 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
             animation: "gt-modal-in 0.22s cubic-bezier(0.34,1.56,0.64,1)",
           }}
         >
-          {/* Tier accent bar */}
           <div style={{ height: 3, background: `linear-gradient(90deg, transparent 0%, ${m.primary} 40%, ${m.primary} 60%, transparent 100%)` }} />
 
-          {/* Header */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "22px 24px 0" }}>
             <div>
               <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 3, color: m.primary, textTransform: "uppercase", marginBottom: 4 }}>
@@ -266,7 +255,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
             </button>
           </div>
 
-          {/* Badge Hero */}
           <div style={{ margin: "18px 24px", background: m.bg, border: `1px solid ${m.primary}33`, borderRadius: 14, padding: "18px 16px", display: "flex", alignItems: "center", gap: 16, position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: "50%", left: 60, width: 100, height: 100, borderRadius: "50%", background: m.glow, filter: "blur(28px)", transform: "translateY(-50%)", animation: "gt-glow-pulse 2.5s ease-in-out infinite" }} />
             <div style={{ width: 72, height: 72, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -297,7 +285,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
             </div>
           </div>
 
-          {/* Inline card preview — hidden on short viewports so share buttons are always reachable */}
           <div className="gt-share-modal-preview" style={{ padding: "0 24px" }}>
             <div style={{ fontSize: 10, color: "var(--gt-modal-text-dim)", fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>
               Preview · How it looks when shared
@@ -305,7 +292,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
             <MiniCardPreview badge={badge} username={username} tier={tier} />
           </div>
 
-          {/* Share Buttons */}
           <div style={{ padding: "16px 24px 28px", display: "flex", flexDirection: "column", gap: 10 }}>
             <a
               href={twitterUrl} target="_blank" rel="noopener noreferrer"
@@ -329,7 +315,6 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
               Share on X / Twitter
             </a>
 
-            {/* 3-column row: LinkedIn · WhatsApp · Copy */}
             <div style={{ display: "flex", gap: 8 }}>
               <a
                 href={linkedInUrl} target="_blank" rel="noopener noreferrer"

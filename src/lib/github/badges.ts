@@ -1,12 +1,3 @@
-/**
- * Badge Calculation Engine — Pure, side-effect-free functions.
- *
- * All business logic for badge tiers lives here and nowhere else.
- * This makes it fully unit-testable without any React or API dependencies.
- */
-
-// ── Tier Configuration ────────────────────────────────────────────────────────
-
 export type Trackability = "high" | "medium" | "none";
 
 export type BadgeKey =
@@ -123,15 +114,12 @@ export const BADGE_CONFIG: Record<BadgeKey, BadgeConfigEntry> = {
 export const TIER_LABELS = ["Not earned", "Bronze", "Silver", "Gold", "Platinum"] as const;
 export type TierLabel = (typeof TIER_LABELS)[number];
 
-// ── Loop pre-fill URLs ───────────────────────────────────────────────────────
 export const LOOP_URLS: Partial<Record<BadgeKey, string>> = {
   pullShark: "/?labels=good+first+issue&noAssignee=true&zeroComments=true&hideLinkedPRs=true",
   galaxyBrain: "/?discussions=true&zeroComments=true",
   yolo: "/?labels=bug&noAssignee=true&hideLinkedPRs=true",
   starstruck: "/?minStars=1000",
 };
-
-// ── Core Calculation ──────────────────────────────────────────────────────────
 
 export type TierResult = {
   /** 0 = not earned, 1-4 = tier achieved */
@@ -189,20 +177,13 @@ export function calculateTier(count: number, thresholds: readonly number[]): Tie
   };
 }
 
-// ── Badge Result (combines config + API data + calculation) ───────────────────
-
 export type BadgeResult = {
   key: BadgeKey;
   config: BadgeConfigEntry;
   tierResult: TierResult;
 };
 
-// ── Focus Badge (coaching feature) ───────────────────────────────────────────
-
-/**
- * Returns the badge the user is closest to leveling up, 
- * ignoring non-trackable and already-maxed badges.
- */
+/** Closest to next tier among trackable, non-maxed badges. */
 export function findFocusBadge(results: BadgeResult[]): BadgeResult | null {
   const candidates = results.filter(
     (r) => r.config.trackable !== "none" && !r.tierResult.isMaxed
@@ -213,8 +194,6 @@ export function findFocusBadge(results: BadgeResult[]): BadgeResult | null {
     current.tierResult.percentToNext > best.tierResult.percentToNext ? current : best
   );
 }
-
-// ── Shareable Card Data ───────────────────────────────────────────────────────
 
 export type ShareableCardData = {
   username: string;

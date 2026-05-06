@@ -1,28 +1,27 @@
 [![GitTrek](public/banner.svg)](https://gittrek.vercel.app)
 
 # GitTrek
-### Find open source issues worth claiming. Track your GitHub badge progress.
+### Don't get sniped on GitHub issues.
 
 **→ [Live app: gittrek.vercel.app](https://gittrek.vercel.app)**
 
-Ever picked up an open source issue, spent an hour setting up the repo, 
-then found someone already had a PR? GitTrek checks for competing PRs 
-**before** you start. It also tracks your GitHub achievement badge 
-progress with live calculations from the GitHub GraphQL API.
+**Before you write a line of code, see which issues already have competing PRs.** Real-time PR competition detection — the gap GitHub search and static “good first issue” lists don’t fill. Smart filters, badge missions, and GraphQL timeline scans so you don’t waste deep focus on already-claimed work.
 
-Free. No setup for browsing. GitHub OAuth for full badge tracking.
+With AI-assisted coding, many hot issues collect competing PRs within hours — GitTrek surfaces who’s already working on it. Many hiring teams review GitHub before interviews — make every merged PR count.
 
-![Find Issue](public/find-issue.png)
+Free browsing without signup. GitHub OAuth for full filters and badge tracking.
 
 ## Key Features
 
 | Feature | Details |
 |---|---|
 | 🔍 **Smart Search** | Debounced keyword search + GraphQL query builder with OR-group expansion |
+| ♻️ **One-click Filter Reset** | Reset all filters back to defaults instantly from the filter panel |
 | 🏷️ **Label & Language Filtering** | Multi-select with intelligent label highlighting on issue cards |
 | ⭐ **Repository Quality Gates** | Min/max stars, min/max forks, last-pushed cutoff — filters run server-side |
 | 🏢 **Organization Filtering** | Scope search to a specific org or toggle to only see org-owned repos |
 | 📡 **Live PR Competition** | Detects open PRs, draft PRs, and linked branches per issue via GraphQL `timelineItems` |
+| 👋 **Viewer Engagement Signal** | Signed-in users can see if they already authored / were assigned / upvoted / opened related PR work |
 | 🗂️ **Task Completion Parsing** | Parses markdown task lists from issue bodies, shows `4 / 22 tasks` directly on cards |
 | 📄 **Cursor-Safe Pagination** | GraphQL cursor chain is preserved; forward jumps are safely restricted |
 | 🔒 **Secure GitHub OAuth** | Access token stored in an `HttpOnly` cookie — never exposed to client-side JS |
@@ -38,7 +37,7 @@ Free. No setup for browsing. GitHub OAuth for full badge tracking.
 ```
 Framework     Next.js 16 (App Router)       React Server Components + Route Handlers
 Language      TypeScript 5                  Strict mode throughout
-State         TanStack Query v5             Stale-while-revalidate, keepPreviousData
+State         TanStack Query v5             Stale-while-revalidate, guarded placeholder by result type
 Styling       Vanilla CSS + Tailwind v4     Design tokens centralized in theme.css
 API Layer     GitHub GraphQL v4 API         Authenticated via OAuth token in cookie
 Auth          Custom OAuth 2.0 flow         HttpOnly session cookie, no JWT
@@ -103,6 +102,8 @@ npm run dev
 
 Open **http://localhost:5173** in your browser.
 
+New to open source? Read the built-in beginner guide at **`/guide`**.
+
 ---
 
 ## Project Structure
@@ -150,7 +151,7 @@ The core search pipeline has three stages:
 User filters are compiled into a GitHub Search Query Language string. Labels and languages are OR-grouped. Boolean operator count is capped at 5 to stay within GitHub API limits. The query is validated and trimmed to 240 characters max.
 
 **2. GraphQL Batch Fetch** (`src/app/api/github/search/route.ts`)  
-The compiled query is sent to GitHub's GraphQL API, fetching up to 100 issues per request. The server loops up to 3 times to accumulate enough valid items after local filtering. Each issue includes repository metadata, `timelineItems` (for PR detection), and `linkedBranches`.
+The compiled query is sent to GitHub's GraphQL API via a single overfetched search request. The server trims and filters locally for high relevance. Each issue includes repository metadata, `timelineItems` (for PR detection), `linkedBranches`, and viewer engagement fields for signed-in users.
 
 **3. Server-Side Quality Filtering** (`filterByRepoQuality`)  
 GitHub's search API doesn't support complex numeric range filters. After fetching, each issue is tested against: min/max stars, min/max forks, push recency, fork status, owner type (User vs Organization), and CONTRIBUTING.md presence.
@@ -163,6 +164,7 @@ For unauthenticated users, a REST fallback provides limited results (10 per page
 
 - [Architecture Deep Dive](docs/ARCHITECTURE.md)
 - [System Design](docs/SYSTEM_DESIGN.md)
+- [Beginner Guide](/guide)
 
 ---
 

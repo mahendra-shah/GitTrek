@@ -29,6 +29,9 @@ export type FilterDraft = {
 type FilterPanelProps = {
   draft: FilterDraft;
   setDraft: React.Dispatch<React.SetStateAction<FilterDraft>>;
+  /** Apply boolean toggles immediately (syncs URL + search without scrolling to submit) */
+  onApplyImmediate: (next: FilterDraft) => void;
+  onReset: () => void;
   hideLinkedPRs: boolean;
   setHideLinkedPRs: (val: boolean) => void;
   isGuest: boolean;
@@ -49,7 +52,6 @@ const COMMON_LANGUAGES = [
 const STARS_MAX = 100_000;
 const FORKS_MAX = 50_000;
 
-/* ── Shared styles ── */
 const labelSt: React.CSSProperties = {
   display: "block", fontSize: 11, fontWeight: 700,
   letterSpacing: "0.08em", textTransform: "uppercase",
@@ -69,11 +71,6 @@ const inputSt: React.CSSProperties = {
   transition: "border-color 0.15s",
 };
 
-/**
- * FieldLabel — renders a proper <label> when htmlFor is provided,
- * otherwise a <span> for non-input section headers.
- * This is the root fix for the "missing form label" WAVE errors.
- */
 function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   if (htmlFor) {
     return <label htmlFor={htmlFor} style={labelSt}>{children}</label>;
@@ -81,7 +78,6 @@ function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor?
   return <span style={labelSt} aria-hidden="true">{children}</span>;
 }
 
-/** Inline info tooltip */
 function Tip({ text }: { text: string }) {
   return (
     <span title={text} style={{ cursor: "help", display: "inline-flex", marginLeft: 4, verticalAlign: "middle" }}>
@@ -90,10 +86,6 @@ function Tip({ text }: { text: string }) {
   );
 }
 
-/**
- * DarkInput — proper accessible input.
- * Always provide an aria-label or ensure a <label htmlFor={id}> exists in the parent.
- */
 function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-label": ariaLabel }: {
   value: string | number;
   onChange: (v: string) => void;
@@ -117,10 +109,6 @@ function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-labe
   );
 }
 
-/**
- * DarkSelect — proper accessible select.
- * Always provide an id paired with a <label htmlFor={id}> in the parent.
- */
 function DarkSelect({ value, onChange, children, id, "aria-label": ariaLabel }: {
   value: string | number;
   onChange: (v: string) => void;
@@ -156,11 +144,6 @@ function DarkSelect({ value, onChange, children, id, "aria-label": ariaLabel }: 
   );
 }
 
-/**
- * Toggle — accessible switch button.
- * aria-label is REQUIRED — the visual text label is a sibling, not a <label for>.
- * Without aria-label, this is an "empty button" error in WAVE / screen readers.
- */
 function Toggle({ checked, onChange, disabled, "aria-label": ariaLabel }: {
   checked: boolean;
   onChange: (v: boolean) => void;
@@ -191,10 +174,6 @@ function Toggle({ checked, onChange, disabled, "aria-label": ariaLabel }: {
   );
 }
 
-/**
- * RangeBlock — slider + min/max inputs.
- * Each input gets a descriptive aria-label like "Minimum Repo Popularity (Stars)".
- */
 function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onMaxChange }: {
   label: string; tooltip?: string; minVal: number; maxVal: number | null; maxLimit: number;
   onMinChange: (v: number) => void; onMaxChange: (v: number | null) => void;
@@ -221,7 +200,10 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
           <DarkInput
             type="number"
             value={minVal}
-            onChange={v => onMinChange(parseInt(v) || 0)}
+            onChange={v => {
+              const next = Math.max(0, Math.min(parseInt(v) || 0, maxLimit));
+              onMinChange(maxVal !== null && next > maxVal ? maxVal : next);
+            }}
             placeholder="0"
             aria-label={`Minimum ${label}`}
           />
@@ -231,7 +213,14 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
           <DarkInput
             type="number"
             value={maxVal === null ? "" : maxVal}
-            onChange={v => onMaxChange(v === "" ? null : parseInt(v) || null)}
+            onChange={v => {
+              if (v === "") {
+                onMaxChange(null);
+                return;
+              }
+              const next = Math.max(0, Math.min(parseInt(v) || 0, maxLimit));
+              onMaxChange(next < minVal ? minVal : next);
+            }}
             placeholder="Any"
             aria-label={`Maximum ${label}`}
           />
@@ -241,11 +230,6 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
   );
 }
 
-/**
- * FilterRow — a labelled toggle row.
- * The label prop is threaded as aria-label to the Toggle button,
- * which is the correct pattern since <label for> doesn't work with role="switch".
- */
 function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
   label: string; sublabel?: string; tooltip?: string;
   checked: boolean; onChange: (v: boolean) => void; disabled?: boolean;
@@ -259,15 +243,15 @@ function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
         </div>
         {sublabel && <span style={{ fontSize: 11, color: "var(--gt-text-subtle)" }}>{sublabel}</span>}
       </div>
-      {/* aria-label threads the visible text to the button for screen readers */}
       <Toggle checked={checked} onChange={onChange} disabled={disabled} aria-label={label} />
     </div>
   );
 }
 
-export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
+export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
   const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
-  const [advancedOpen, setAdvancedOpen] = useState(!isGuest);
+  const apply = (k: Partial<FilterDraft>) => onApplyImmediate({ ...draft, ...k });
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const effectiveSearching = mounted && isSearching;
@@ -277,8 +261,42 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
   const ageId = useId();
   const pushedId = useId();
 
+  const zeroSublabel = draft.zeroComments
+    ? (draft.contributionType === "discussion"
+      ? "Only discussions with no replies yet"
+      : "Only issues nobody has commented on")
+    : undefined;
+
+  const submitLabel = effectiveSearching
+    ? "Searching…"
+    : draft.contributionType === "discussion"
+      ? "Search discussions"
+      : "Search issues";
+
   return (
-    <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <form className="gt-filter-form" onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <span style={{ ...labelSt, marginBottom: 0 }}>Filters</span>
+        <button
+          type="button"
+          onClick={onReset}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--gt-primary)",
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          Clear all
+        </button>
+      </div>
+
+      <div className="gt-filter-scroll" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
       {/* Language — proper label association via htmlFor/id */}
       <div>
@@ -317,56 +335,64 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
       </div>
 
       {/* Quick Filters */}
-      <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
+      <div style={{ borderTop: "1px solid var(--gt-border)", paddingTop: 14 }}>
         <FieldLabel>Quick Filters</FieldLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <FilterRow
-            label="No one assigned"
-            tooltip="Only show issues that haven't been assigned to anyone yet — so you know they're still up for grabs."
-            checked={draft.noAssignee}
-            onChange={v => set({ noAssignee: v })}
-          />
+          {draft.contributionType === "issue" && (
+            <FilterRow
+              label="No one assigned"
+              tooltip="Only show issues that haven't been assigned to anyone yet — so you know they're still up for grabs."
+              checked={draft.noAssignee}
+              onChange={v => apply({ noAssignee: v })}
+            />
+          )}
           <FilterRow
             label="No replies yet"
-            tooltip="Only issues with zero comments. These are the most untouched opportunities — your message will be the first."
-            sublabel={draft.zeroComments ? "Only issues nobody has commented on" : undefined}
+            tooltip={draft.contributionType === "discussion"
+              ? "Only discussions with zero replies — first response could be yours."
+              : "Only issues with zero comments. These are the most untouched opportunities — your message will be the first."}
+            sublabel={zeroSublabel}
             checked={draft.zeroComments}
-            onChange={v => set({ zeroComments: v })}
+            onChange={v => apply({ zeroComments: v })}
           />
-          <FilterRow
-            label="No PR in progress"
-            sublabel={isGuest ? "Sign in to unlock" : undefined}
-            tooltip="Hides issues that already have an open pull request — so you're not building something already being built."
-            checked={!isGuest && hideLinkedPRs}
-            onChange={isGuest ? () => {} : setHideLinkedPRs}
-            disabled={isGuest}
-          />
+          {draft.contributionType === "issue" && (
+            <FilterRow
+              label="No PR in progress"
+              sublabel={isGuest ? "Sign in to unlock" : undefined}
+              tooltip="Hides issues that already have an open pull request — so you're not building something already being built."
+              checked={!isGuest && hideLinkedPRs}
+              onChange={isGuest ? () => {} : (v) => setHideLinkedPRs(v)}
+              disabled={isGuest}
+            />
+          )}
         </div>
       </div>
 
       {/* Contribution Signals */}
-      <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
-        <FieldLabel>Contribution Signals</FieldLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <FilterRow
-            label="Active maintainer"
-            tooltip="Only repos pushed to in the last 30 days. Avoids 'ghost' repos where your PR would be ignored."
-            sublabel="Repo updated in the last 30 days"
-            checked={draft.activeMaintainer}
-            onChange={v => set({ activeMaintainer: v })}
-          />
-          <FilterRow
-            label="Looking for pairing"
-            tooltip="Issues where someone in the comments has asked to pair program or co-author — helps earn Pair Extraordinaire badge."
-            sublabel="Issues with pairing requests in comments"
-            checked={draft.pairingRequested}
-            onChange={v => set({ pairingRequested: v })}
-          />
+      {draft.contributionType === "issue" && (
+        <div style={{ borderTop: "1px solid var(--gt-border)", paddingTop: 14 }}>
+          <FieldLabel>Contribution Signals</FieldLabel>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <FilterRow
+              label="Active maintainer"
+              tooltip="Only repos pushed to in the last 30 days. Avoids 'ghost' repos where your PR would be ignored."
+              sublabel="Repo updated in the last 30 days"
+              checked={draft.activeMaintainer}
+              onChange={v => apply({ activeMaintainer: v })}
+            />
+            <FilterRow
+              label="Looking for pairing"
+              tooltip="Issues where someone in the comments has asked to pair program or co-author — helps earn Pair Extraordinaire badge."
+              sublabel="Issues with pairing requests in comments"
+              checked={draft.pairingRequested}
+              onChange={v => apply({ pairingRequested: v })}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Advanced Filters — proper aria-expanded/aria-controls disclosure pattern */}
-      <div style={{ borderTop: "1px solid var(--gt-input-border)", paddingTop: 16 }}>
+      <div style={{ borderTop: "1px solid var(--gt-border)", paddingTop: 14 }}>
         <button
           type="button"
           onClick={() => setAdvancedOpen(p => !p)}
@@ -391,8 +417,15 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               tooltip="Filter by how popular the repo is. More stars usually means an active community — but fewer stars means less competition."
               minVal={draft.minStars} maxVal={draft.maxStars}
               maxLimit={STARS_MAX}
-              onMinChange={v => set({ minStars: v })}
-              onMaxChange={v => set({ maxStars: v })}
+              onMinChange={v => {
+                const min = Math.max(0, Math.min(v, STARS_MAX));
+                const max = draft.maxStars;
+                set({ minStars: max !== null && min > max ? max : min });
+              }}
+              onMaxChange={v => {
+                const nextMax = v === null ? null : Math.max(0, Math.min(v, STARS_MAX));
+                set({ maxStars: nextMax !== null && nextMax < draft.minStars ? draft.minStars : nextMax });
+              }}
             />
 
             <RangeBlock
@@ -400,8 +433,15 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
               tooltip="Forks indicate how many developers are actively building on top of this project. Higher forks = more active development."
               minVal={draft.minForks} maxVal={draft.maxForks}
               maxLimit={FORKS_MAX}
-              onMinChange={v => set({ minForks: v })}
-              onMaxChange={v => set({ maxForks: v })}
+              onMinChange={v => {
+                const min = Math.max(0, Math.min(v, FORKS_MAX));
+                const max = draft.maxForks;
+                set({ minForks: max !== null && min > max ? max : min });
+              }}
+              onMaxChange={v => {
+                const nextMax = v === null ? null : Math.max(0, Math.min(v, FORKS_MAX));
+                set({ maxForks: nextMax !== null && nextMax < draft.minForks ? draft.minForks : nextMax });
+              }}
             />
 
             {/* Last Code Push — proper label association */}
@@ -440,37 +480,42 @@ export function FilterPanel({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs, 
                 tooltip="Only repos that have a CONTRIBUTING.md file — these projects actively welcome new contributors."
                 sublabel="Repo has CONTRIBUTING.md"
                 checked={draft.hasContributing}
-                onChange={v => set({ hasContributing: v })}
+                onChange={v => apply({ hasContributing: v })}
               />
               <FilterRow
                 label="Company-backed repos only"
                 tooltip="Only show issues from organization-owned repos (e.g. Google, Microsoft). These tend to have more rigorous code review."
                 sublabel="Exclude personal projects"
                 checked={draft.onlyOrgs || false}
-                onChange={v => set({ onlyOrgs: v })}
+                onChange={v => apply({ onlyOrgs: v })}
               />
             </div>
           </div>
         )}
       </div>
 
-      <button
-        type="submit"
-        disabled={effectiveSearching || undefined}
-        style={{
-          width: "100%",
-          background: "var(--gt-text)",
-          color: "var(--gt-card)",
-          border: "none", borderRadius: 10, padding: "13px 0",
-          fontSize: 15, fontWeight: 700,
-          cursor: effectiveSearching ? "wait" : "pointer",
-          opacity: effectiveSearching ? 0.7 : 1,
-          transition: "opacity 0.2s",
-          marginTop: 4,
-        }}
-      >
-        {effectiveSearching ? "Searching…" : "Search issues"}
-      </button>
+      </div>
+
+      <div className="gt-filter-submit-wrap">
+      <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+        <button
+          type="submit"
+          disabled={effectiveSearching || undefined}
+          style={{
+            flex: 1,
+            background: "var(--gt-text)",
+            color: "var(--gt-card)",
+            border: "none", borderRadius: 10, padding: "13px 0",
+            fontSize: 15, fontWeight: 700,
+            cursor: effectiveSearching ? "wait" : "pointer",
+            opacity: effectiveSearching ? 0.7 : 1,
+            transition: "opacity 0.2s",
+          }}
+        >
+          {submitLabel}
+        </button>
+      </div>
+      </div>
     </form>
   );
 }
