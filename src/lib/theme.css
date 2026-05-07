@@ -132,9 +132,65 @@
   to   { transform: rotate(360deg); }
 }
 
+@keyframes gt-shimmer-ring {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Rotating conic halo behind earned badge icons (BadgeCard) */
+.gt-badge-shimmer-ring {
+  position: absolute;
+  inset: -5px;
+  border-radius: 14px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    var(--highlight-bar, #888) 25%,
+    transparent 45%,
+    var(--highlight-bar, #888) 70%,
+    transparent 100%
+  );
+  animation: gt-shimmer-ring 4.5s linear infinite;
+  opacity: 0.75;
+  z-index: 0;
+  pointer-events: none;
+}
+
 @keyframes gt-modal-in {
   from { opacity: 0; transform: scale(0.95) translateY(12px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Achievement Drop sequence (ShareBadgeModal) ── */
+@keyframes gt-drop-card {
+  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes gt-drop-badge {
+  from { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes gt-drop-letter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gt-drop-fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gt-drop-backdrop {
+  from { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}
+
+/* Continuous gentle float for the modal hero badge */
+@keyframes gt-badge-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
 }
 
 @keyframes gt-glow-pulse {

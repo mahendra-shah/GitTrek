@@ -20,13 +20,31 @@ export function ShareButton({ data }: Props) {
     setState("generating");
 
     try {
-      // Dynamically import html2canvas to avoid SSR issues
+      const node = cardRef.current;
+      const imgs = Array.from(node.querySelectorAll("img")) as HTMLImageElement[];
+      await Promise.all(
+        imgs.map((img) =>
+          img.complete && img.naturalWidth > 0
+            ? img.decode().catch(() => null)
+            : new Promise<void>((resolve) => {
+                const done = () => {
+                  img.removeEventListener("load", done);
+                  img.removeEventListener("error", done);
+                  resolve();
+                };
+                img.addEventListener("load", done);
+                img.addEventListener("error", done);
+              })
+        )
+      );
+
       const { default: html2canvas } = await import("html2canvas");
 
-      const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: "#0D0D14",
-        scale: 2, // 2× for retina quality
+      const canvas = await html2canvas(node, {
+        backgroundColor: "#06080C",
+        scale: 2,
         useCORS: true,
+        allowTaint: false,
         logging: false,
       });
 
@@ -72,14 +90,15 @@ export function ShareButton({ data }: Props) {
 
   return (
     <>
-      {/* Off-screen rendered card for html2canvas capture */}
+      {/* Off-screen rendered card for html2canvas capture.
+          NOTE: must NOT use visibility:hidden / display:none — html2canvas skips those. */}
       <div
         style={{
           position: "fixed",
-          top: -9999,
-          left: -9999,
+          left: -99999,
+          top: 0,
           pointerEvents: "none",
-          visibility: "hidden",
+          opacity: 1,
         }}
         aria-hidden="true"
       >
