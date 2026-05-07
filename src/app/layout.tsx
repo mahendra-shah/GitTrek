@@ -15,7 +15,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 const SITE_URL = "https://gittrek.vercel.app";
-const OG_HOME_IMAGE = `${SITE_URL}/api/og/home`;
+/** Root-level OG image — not under /api/ so social crawlers are not blocked by robots.txt */
+const OG_HOME_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
   title: "GitTrek — Don't Get Sniped on GitHub Issues",
