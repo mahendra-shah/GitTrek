@@ -61,7 +61,7 @@ export function HomeOgImage() {
             maxWidth: 480,
           }}
         >
-          See which issues already have competing PRs — before you invest hours.
+          Find beginner-friendly issues with no active competing PRs — so you don&apos;t waste setup hours.
         </div>
         <div
           style={{

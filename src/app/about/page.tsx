@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { CANONICAL_DESCRIPTION, SITE_AI_CONTEXT, SITE_CAREER_HOOK } from "@/lib/site-copy";
 
 const SITE = "https://gittrek.vercel.app";
-const OG_HOME = `${SITE}/api/og/home`;
+const OG_HOME = `${SITE}/opengraph-image`;
 
 const ABOUT_DESC = `${CANONICAL_DESCRIPTION} How GraphQL timeline scans work, badge tracking, and how GitTrek differs from static lists.`;
 

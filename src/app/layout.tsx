@@ -19,7 +19,7 @@ const SITE_URL = "https://gittrek.vercel.app";
 const OG_HOME_IMAGE = `${SITE_URL}/opengraph-image`;
 
 export const metadata: Metadata = {
-  title: "GitTrek — Don't Get Sniped on GitHub Issues",
+  title: "GitTrek — Find Issues You Can Actually Win",
   description: CANONICAL_DESCRIPTION,
   keywords: ["github", "open source", "good first issue", "contribute to open source", "github issues", "developer tools", "pull request"],
   authors: [{ name: "Mahendra Shah", url: "https://github.com/mahendra-shah" }],
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    title: "GitTrek — Don't Get Sniped on GitHub Issues",
+    title: "GitTrek — Find Issues You Can Actually Win",
     description: CANONICAL_DESCRIPTION,
     siteName: "GitTrek",
     images: [
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "GitTrek — Don't Get Sniped on GitHub Issues",
+    title: "GitTrek — Find Issues You Can Actually Win",
     description: CANONICAL_DESCRIPTION,
     images: [OG_HOME_IMAGE],
     creator: "@mahendra_xp",

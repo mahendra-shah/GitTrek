@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CANONICAL_DESCRIPTION } from "@/lib/site-copy";
 
 const SITE = "https://gittrek.vercel.app";
-const OG_HOME = `${SITE}/api/og/home`;
+const OG_HOME = `${SITE}/opengraph-image`;
 
 const GUIDE_DESC = `${CANONICAL_DESCRIPTION} Plus prerequisites, OSS norms, first PR steps, and mistakes to avoid — for developers starting open source today.`;
 
