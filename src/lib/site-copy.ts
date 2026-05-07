@@ -1,5 +1,5 @@
 export const CANONICAL_DESCRIPTION =
-  "Before you write a line of code, see which issues already have competing PRs. The only issue discovery tool with real-time PR competition detection.";
+  "Find beginner-friendly GitHub issues where no one is already working — GitTrek checks for competing PRs so you don't waste setup hours. Track your GitHub badge progress. Free and open source.";
 
 export const SITE_TAGLINE = "Don't get sniped on GitHub issues.";
 
