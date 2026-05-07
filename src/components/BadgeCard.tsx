@@ -1,7 +1,8 @@
 "use client";
 
-import { type BadgeResult, TIER_LABELS } from "@/lib/github/badges";
+import { type BadgeResult, type ShareableCardData, TIER_LABELS } from "@/lib/github/badges";
 import { useState, useRef, useEffect } from "react";
+import { useCountUp } from "@/hooks/useCountUp";
 import { ShareBadgeModal } from "./ShareBadgeModal";
 
 type Props = {
@@ -10,6 +11,7 @@ type Props = {
   username: string;
   isHighlighted?: boolean;
   index?: number;
+  shareCardData: ShareableCardData;
 };
 
 const TIER_COLORS = {
@@ -26,13 +28,14 @@ function fmtNum(n: number) {
   return String(n);
 }
 
-export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }: Props) {
+export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0, shareCardData }: Props) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const cardRef = useRef<HTMLElement>(null);
   const { config, tierResult } = badge;
   const { tier, tierLabel, current, nextThreshold, needed, percentToNext, isMaxed } = tierResult;
   const colors = TIER_COLORS[tier];
   const isNotTrackable = config.trackable === "none";
+  const { ref: countRef, value: countDisplay } = useCountUp(isNotTrackable ? 0 : current, 900);
 
   useEffect(() => {
     if (isHighlighted && cardRef.current) {
@@ -75,29 +78,47 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
           <div
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 8,
+              width: 56,
+              height: 56,
+              borderRadius: 12,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
               background: colors.pill.bg,
-              border: `1px solid ${colors.glow}`,
+              border: tier > 0 ? "none" : `1px solid ${colors.glow}`,
+              position: "relative",
+              overflow: "visible",
             }}
           >
-            {config.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={config.image}
-                alt=""
-                width={28}
-                height={28}
-                style={{ objectFit: "contain", filter: tier === 0 ? "grayscale(100%) opacity(50%)" : "none" }}
-              />
-            ) : (
-              <span style={{ fontSize: 22, opacity: tier === 0 ? 0.5 : 1 }}>{config.emoji}</span>
-            )}
+            {tier > 0 && <span className="gt-badge-shimmer-ring" aria-hidden />}
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: colors.pill.bg,
+                border: `1px solid ${colors.glow}`,
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              {config.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={config.image}
+                  alt=""
+                  width={40}
+                  height={40}
+                  style={{ objectFit: "contain", filter: tier === 0 ? "grayscale(100%) opacity(50%)" : "none" }}
+                />
+              ) : (
+                <span style={{ fontSize: 26, opacity: tier === 0 ? 0.5 : 1 }}>{config.emoji}</span>
+              )}
+            </div>
           </div>
           <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--gt-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {config.label}
@@ -130,7 +151,7 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
           <div
             style={{
-              height: 6,
+              height: 8,
               background: "var(--gt-card-hover)",
               borderRadius: 99,
               overflow: "hidden",
@@ -144,7 +165,7 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
               style={{
                 height: "100%",
                 width: `${percentToNext}%`,
-                background: colors.bar,
+                background: `linear-gradient(90deg, ${colors.bar}88, ${colors.bar})`,
                 borderRadius: 99,
                 transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
               }}
@@ -153,7 +174,9 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13 }}>
             <span style={{ color: "var(--gt-text)" }}>
-              <span style={{ fontWeight: 600 }}>{fmtNum(current)}</span>
+              <span ref={countRef} style={{ fontWeight: 600 }}>
+                {fmtNum(countDisplay)}
+              </span>
               <span style={{ color: "var(--gt-text-muted)" }}>
                 {nextThreshold !== null ? ` / ${fmtNum(nextThreshold)}` : ""} {config.contributionNoun}
               </span>
@@ -200,59 +223,60 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
         </a>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-        <details style={{ flex: 1 }}>
-          <summary
-            style={{
-              fontSize: 12,
-              color: "var(--gt-text-subtle)",
-              cursor: "pointer",
-              userSelect: "none",
-              listStyle: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <span style={{ fontSize: 10 }}>▶</span> What affects this calculation?
-          </summary>
-          <p
-            style={{
-              marginTop: 8,
-              fontSize: 12,
-              color: "var(--gt-text-muted)",
-              lineHeight: 1.6,
-              paddingLeft: 14,
-              borderLeft: "2px solid var(--gt-border)",
-            }}
-          >
-            {config.caveat}
-          </p>
-        </details>
+      {tier > 0 && (
+        <button
+          type="button"
+          onClick={() => setIsShareModalOpen(true)}
+          className="gt-share-btn"
+          aria-label={`Share ${config.label} badge`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            background: "transparent",
+            border: "2px solid var(--gt-primary)",
+            cursor: "pointer",
+            color: "var(--gt-primary)",
+            fontSize: 14,
+            fontWeight: 700,
+            padding: "10px 14px",
+            borderRadius: 10,
+            marginTop: 2,
+          }}
+        >
+          Share Achievement →
+        </button>
+      )}
 
-        {tier > 0 && (
-          <button
-            onClick={() => setIsShareModalOpen(true)}
-            className="gt-share-btn"
-            aria-label={`Share ${config.label} badge`}
-            style={{
-              background: "var(--gt-card-hover)", border: "1px solid var(--gt-border)", cursor: "pointer",
-              color: "var(--gt-text)", fontSize: 13, fontWeight: 600,
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "6px 12px", borderRadius: 8,
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="18" cy="5" r="3"></circle>
-              <circle cx="6" cy="12" r="3"></circle>
-              <circle cx="18" cy="19" r="3"></circle>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-            </svg>
-            Share
-          </button>
-        )}
-      </div>
+      <details style={{ marginTop: 4 }}>
+        <summary
+          style={{
+            fontSize: 12,
+            color: "var(--gt-text-subtle)",
+            cursor: "pointer",
+            userSelect: "none",
+            listStyle: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 10 }}>▶</span> What affects this calculation?
+        </summary>
+        <p
+          style={{
+            marginTop: 8,
+            fontSize: 12,
+            color: "var(--gt-text-muted)",
+            lineHeight: 1.6,
+            paddingLeft: 14,
+            borderLeft: "2px solid var(--gt-border)",
+          }}
+        >
+          {config.caveat}
+        </p>
+      </details>
 
       {tier > 0 && (
         <ShareBadgeModal
@@ -266,10 +290,12 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0 }
             percent: percentToNext,
             current,
             next: nextThreshold,
+            needed,
             emoji: config.emoji,
             image: config.image,
           }}
           username={username}
+          shareCardData={shareCardData}
         />
       )}
     </article>

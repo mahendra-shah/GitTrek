@@ -1,20 +1,25 @@
 "use client";
 
-import { type BadgeResult, LOOP_URLS } from "@/lib/github/badges";
+import { type BadgeResult, LOOP_URLS, TIER_LABELS } from "@/lib/github/badges";
 import { useRouter } from "next/navigation";
 
 type Props = {
   focusBadge: BadgeResult;
-  username: string;
 };
 
-export function FocusBadge({ focusBadge, username }: Props) {
+const R = 19;
+const CIRC = 2 * Math.PI * R;
+
+export function FocusBadge({ focusBadge }: Props) {
   const router = useRouter();
   const { config, tierResult } = focusBadge;
-  const nextTierLabel = tierResult.tier < 4 ? ["Bronze", "Silver", "Gold", "Platinum"][tierResult.tier] : "";
+  const nextTierLabel =
+    tierResult.tier < 4 ? ((TIER_LABELS as readonly string[])[tierResult.tier + 1] ?? "") : "";
 
   const { contributionNoun } = config;
   const loopUrl = LOOP_URLS[focusBadge.key] || "/";
+  const pct = tierResult.tier === 0 ? 0 : tierResult.percentToNext;
+  const dashOffset = CIRC * (1 - pct / 100);
 
   return (
     <div
@@ -36,31 +41,67 @@ export function FocusBadge({ focusBadge, username }: Props) {
           style={{
             width: 44,
             height: 44,
-            borderRadius: 12,
-            background: "rgba(249,115,22,0.15)",
-            border: "1px solid rgba(249,115,22,0.30)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 22,
             flexShrink: 0,
+            position: "relative",
           }}
           role="img"
-          aria-label="Target"
+          aria-label={`Progress ${pct}% toward next tier`}
         >
-          🎯
-        </div>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gt-primary)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 4 }}>
-            Focus — Closest to next tier
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--gt-text)", lineHeight: 1.3, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg viewBox="0 0 44 44" width={44} height={44} style={{ display: "block" }}>
+            <circle cx={22} cy={22} r={R} fill="none" stroke="rgba(249,115,22,0.15)" strokeWidth={3} />
+            <circle
+              cx={22}
+              cy={22}
+              r={R}
+              fill="none"
+              stroke="#F97316"
+              strokeWidth={3}
+              strokeDasharray={CIRC}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              transform="rotate(-90 22 22)"
+              style={{ transition: "stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" }}
+            />
+          </svg>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
             {config.image ? (
               /* eslint-disable-next-line @next/next/no-img-element */
-              <img src={config.image} alt="" width={36} height={36} style={{ borderRadius: 6, objectFit: "contain" }} />
+              <img src={config.image} alt="" width={26} height={26} style={{ borderRadius: 5, objectFit: "contain" }} />
             ) : (
-              <span style={{ fontSize: 28 }}>{config.emoji}</span>
+              <span style={{ fontSize: 20 }}>{config.emoji}</span>
             )}
+          </div>
+        </div>
+        <div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--gt-primary)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            Focus — Closest to next tier
+          </div>
+          <div
+            style={{
+              fontSize: 16,
+              fontWeight: 700,
+              color: "var(--gt-text)",
+              lineHeight: 1.3,
+            }}
+          >
             {config.label}
           </div>
           <div style={{ fontSize: 13, color: "var(--gt-text-muted)", marginTop: 3 }}>
@@ -72,6 +113,7 @@ export function FocusBadge({ focusBadge, username }: Props) {
       </div>
 
       <button
+        type="button"
         onClick={() => router.push(loopUrl)}
         className="gt-focus-cta"
         style={{
@@ -86,11 +128,11 @@ export function FocusBadge({ focusBadge, username }: Props) {
           whiteSpace: "nowrap",
         }}
       >
-        {config.label === "Galaxy Brain" 
-          ? "Find Discussions →" 
+        {config.label === "Galaxy Brain"
+          ? "Find Discussions →"
           : config.label === "Starstruck"
-          ? "Find popular projects →"
-          : "Find Issues →"}
+            ? "Find popular projects →"
+            : "Find Issues →"}
       </button>
     </div>
   );

@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  calculateTier,
   findFocusBadge,
-  BADGE_CONFIG,
-  type BadgeResult,
-  type BadgeKey,
+  badgeResultsFromUnifiedApi,
+  buildShareableCardData,
   LOOP_URLS,
+  type BadgeResult,
 } from "@/lib/github/badges";
+import type { UnifiedBadgeApiJson } from "@/lib/github/fetch-unified-badges";
 import { BadgeCard, BadgeCardSkeleton } from "@/components/BadgeCard";
 import { FocusBadge } from "@/components/FocusBadge";
 
@@ -83,40 +83,9 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         return;
       }
 
-      const json = await res.json();
+      const json = (await res.json()) as UnifiedBadgeApiJson;
 
-      const newResults: BadgeResult[] = [
-        {
-          key: "pullShark" as BadgeKey,
-          config: BADGE_CONFIG.pullShark,
-          tierResult: calculateTier(json.pullShark?.count ?? 0, BADGE_CONFIG.pullShark.tiers),
-        },
-        {
-          key: "starstruck" as BadgeKey,
-          config: BADGE_CONFIG.starstruck,
-          tierResult: calculateTier(json.starstruck?.maxStars ?? 0, BADGE_CONFIG.starstruck.tiers),
-        },
-        {
-          key: "galaxyBrain" as BadgeKey,
-          config: BADGE_CONFIG.galaxyBrain,
-          tierResult: calculateTier(json.galaxyBrain?.answerCount ?? 0, BADGE_CONFIG.galaxyBrain.tiers),
-        },
-        {
-          key: "yolo" as BadgeKey,
-          config: BADGE_CONFIG.yolo,
-          tierResult: calculateTier(json.yolo?.count ?? 0, BADGE_CONFIG.yolo.tiers),
-        },
-        {
-          key: "publicSponsor" as BadgeKey,
-          config: BADGE_CONFIG.publicSponsor,
-          tierResult: calculateTier(json.publicSponsor?.sponsoringCount ?? 0, BADGE_CONFIG.publicSponsor.tiers),
-        },
-        {
-          key: "quickdraw" as BadgeKey,
-          config: BADGE_CONFIG.quickdraw,
-          tierResult: calculateTier(0, BADGE_CONFIG.quickdraw.tiers),
-        },
-      ];
+      const newResults = badgeResultsFromUnifiedApi(json);
 
       setResults(newResults);
 
@@ -184,7 +153,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   if (!results) {
     return (
       <div style={{ columnWidth: 340, columnGap: 14 }} aria-hidden="true">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: 7 }).map((_, i) => (
           <BadgeCardSkeleton key={i} />
         ))}
       </div>
@@ -192,6 +161,8 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   }
 
   const focus = findFocusBadge(results);
+  const avatarUrl = `https://github.com/${username}.png?size=128`;
+  const shareCardData = buildShareableCardData(username, avatarUrl, results);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -253,7 +224,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         </button>
       </div>
 
-      {focus && <FocusBadge focusBadge={focus} username={username} />}
+      {focus && <FocusBadge focusBadge={focus} />}
 
       <div style={{ columnWidth: 340, columnGap: 14 }}>
         {results.map((badge, idx) => (
@@ -264,6 +235,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
             username={username}
             isHighlighted={badge.key === highlightKey}
             index={idx}
+            shareCardData={shareCardData}
           />
         ))}
       </div>

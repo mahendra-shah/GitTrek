@@ -1,3 +1,5 @@
+import type { UnifiedBadgeApiJson } from "@/lib/github/fetch-unified-badges";
+
 export type Trackability = "high" | "medium" | "none";
 
 export type BadgeKey =
@@ -183,6 +185,47 @@ export type BadgeResult = {
   tierResult: TierResult;
 };
 
+/** Maps GET /api/github/badges JSON to dashboard rows (keep order in sync with BadgeDashboard). */
+export function badgeResultsFromUnifiedApi(json: UnifiedBadgeApiJson): BadgeResult[] {
+  return [
+    {
+      key: "pullShark",
+      config: BADGE_CONFIG.pullShark,
+      tierResult: calculateTier(json.pullShark?.count ?? 0, BADGE_CONFIG.pullShark.tiers),
+    },
+    {
+      key: "pairExtraordinaire",
+      config: BADGE_CONFIG.pairExtraordinaire,
+      tierResult: calculateTier(json.pairExtraordinaire?.count ?? 0, BADGE_CONFIG.pairExtraordinaire.tiers),
+    },
+    {
+      key: "starstruck",
+      config: BADGE_CONFIG.starstruck,
+      tierResult: calculateTier(json.starstruck?.maxStars ?? 0, BADGE_CONFIG.starstruck.tiers),
+    },
+    {
+      key: "galaxyBrain",
+      config: BADGE_CONFIG.galaxyBrain,
+      tierResult: calculateTier(json.galaxyBrain?.answerCount ?? 0, BADGE_CONFIG.galaxyBrain.tiers),
+    },
+    {
+      key: "yolo",
+      config: BADGE_CONFIG.yolo,
+      tierResult: calculateTier(json.yolo?.count ?? 0, BADGE_CONFIG.yolo.tiers),
+    },
+    {
+      key: "publicSponsor",
+      config: BADGE_CONFIG.publicSponsor,
+      tierResult: calculateTier(json.publicSponsor?.sponsoringCount ?? 0, BADGE_CONFIG.publicSponsor.tiers),
+    },
+    {
+      key: "quickdraw",
+      config: BADGE_CONFIG.quickdraw,
+      tierResult: calculateTier(0, BADGE_CONFIG.quickdraw.tiers),
+    },
+  ];
+}
+
 /** Closest to next tier among trackable, non-maxed badges. */
 export function findFocusBadge(results: BadgeResult[]): BadgeResult | null {
   const candidates = results.filter(
@@ -212,7 +255,56 @@ export type ShareableCardData = {
     needed: number;
     nextTierLabel: TierLabel;
   } | null;
+  /** Hero badge for downloadable share card (highest tier among earned, trackable badges). */
+  featuredBadge: {
+    key: BadgeKey;
+    label: string;
+    emoji: string;
+    image?: string;
+    tierLabel: TierLabel;
+    tier: number;
+    current: number;
+    nextThreshold: number | null;
+    percentToNext: number;
+    isMaxed: boolean;
+    contributionNoun: string;
+  } | null;
 };
+
+/** Highest showcase badge for the downloadable card (earned + trackable only). */
+export function pickFeaturedBadgeForShareCard(results: BadgeResult[]): BadgeResult | null {
+  const earned = results.filter((r) => r.tierResult.tier > 0 && r.config.trackable !== "none");
+  if (earned.length === 0) return null;
+  return earned.reduce((best, r) => {
+    if (r.tierResult.tier > best.tierResult.tier) return r;
+    if (
+      r.tierResult.tier === best.tierResult.tier &&
+      r.tierResult.percentToNext > best.tierResult.percentToNext
+    ) {
+      return r;
+    }
+    return best;
+  });
+}
+
+/** Pick the badge to feature in Open Graph previews (earned only; else Pull Shark at tier 0). */
+export function pickTopBadgeForOpenGraph(results: BadgeResult[]): BadgeResult {
+  const earned = results.filter((r) => r.tierResult.tier > 0);
+  if (earned.length === 0) {
+    const fallback = results.find((r) => r.key === "pullShark");
+    return fallback ?? results[0];
+  }
+  return earned.reduce((best, r) => {
+    if (r.tierResult.tier > best.tierResult.tier) return r;
+    if (
+      r.tierResult.tier === best.tierResult.tier &&
+      r.tierResult.percentToNext > best.tierResult.percentToNext
+    ) {
+      return r;
+    }
+    return best;
+  });
+}
 
 export function buildShareableCardData(
   username: string,
@@ -240,5 +332,22 @@ export function buildShareableCardData(
       }
     : null;
 
-  return { username, avatarUrl, earnedBadges, focusBadge };
+  const featured = pickFeaturedBadgeForShareCard(results);
+  const featuredBadge = featured
+    ? {
+        key: featured.key,
+        label: featured.config.label,
+        emoji: featured.config.emoji,
+        image: featured.config.image,
+        tierLabel: featured.tierResult.tierLabel,
+        tier: featured.tierResult.tier,
+        current: featured.tierResult.current,
+        nextThreshold: featured.tierResult.nextThreshold,
+        percentToNext: featured.tierResult.percentToNext,
+        isMaxed: featured.tierResult.isMaxed,
+        contributionNoun: featured.config.contributionNoun,
+      }
+    : null;
+
+  return { username, avatarUrl, earnedBadges, focusBadge, featuredBadge };
 }

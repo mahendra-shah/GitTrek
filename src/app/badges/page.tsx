@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { BadgeDashboard } from "@/components/BadgeDashboard";
 import { UserLookup } from "@/components/UserLookup";
 import { getToken } from "@/lib/auth/adapter";
+import { fetchUnifiedBadgeData, resolveBotTokenForBadges } from "@/lib/github/fetch-unified-badges";
+import {
+  badgeResultsFromUnifiedApi,
+  pickTopBadgeForOpenGraph,
+  TIER_LABELS,
+} from "@/lib/github/badges";
+import { getSiteOrigin } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +28,40 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
     };
   }
 
-  const ogImageUrl = `https://gittrek.vercel.app/api/og/badge?user=${user}&badge=pullShark`;
+  const origin = await getSiteOrigin();
+  const ogParams = new URLSearchParams({
+    user,
+    badge: "pullShark",
+    tier: "0",
+    current: "0",
+    pct: "0",
+  });
+
+  const token = resolveBotTokenForBadges();
+  if (token) {
+    try {
+      const json = await fetchUnifiedBadgeData(token, user);
+      const results = badgeResultsFromUnifiedApi(json);
+      const top = pickTopBadgeForOpenGraph(results);
+      const tr = top.tierResult;
+      ogParams.set("badge", top.key);
+      ogParams.set("tier", String(tr.tier));
+      ogParams.set("current", String(tr.current));
+      ogParams.set("pct", String(tr.percentToNext));
+      if (tr.nextThreshold !== null) {
+        ogParams.set("next", String(tr.nextThreshold));
+      } else {
+        ogParams.delete("next");
+      }
+      if (!tr.isMaxed && tr.tier < 4 && tr.tier > 0) {
+        ogParams.set("nextTier", TIER_LABELS[tr.tier + 1]);
+      }
+    } catch {
+      /* keep defaults — OG still renders */
+    }
+  }
+
+  const ogImageUrl = `${origin}/api/og/badge?${ogParams.toString()}`;
 
   return {
     title: `${user}'s GitHub Badges`,

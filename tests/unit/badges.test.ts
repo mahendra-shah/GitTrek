@@ -133,6 +133,7 @@ describe("buildShareableCardData", () => {
     expect(card.earnedBadges).toHaveLength(1);
     expect(card.earnedBadges[0].key).toBe("pullShark");
     expect(card.earnedBadges[0].tierLabel).toBe("Silver");
+    expect(card.featuredBadge?.key).toBe("pullShark");
   });
 
   it("focusBadge points to the closest unearned badge", () => {

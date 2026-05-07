@@ -4,13 +4,11 @@ import { BADGE_CONFIG, TIER_LABELS, type BadgeKey } from "@/lib/github/badges";
 
 export const runtime = "edge";
 
-// Satori: keep image dimensions in style props.
-
 const TIER_PALETTE = {
-  0: { primary: "#888888", secondary: "#444444", glow: "rgba(136,136,136,0.3)", label: "NOT EARNED" },
-  1: { primary: "#CD7F32", secondary: "#8B4513", glow: "rgba(205,127,50,0.45)", label: "BRONZE" },
-  2: { primary: "#C0C0C0", secondary: "#808080", glow: "rgba(192,192,192,0.45)", label: "SILVER" },
-  3: { primary: "#FFD700", secondary: "#B8860B", glow: "rgba(255,215,0,0.55)", label: "GOLD" },
+  0: { primary: "#888888", secondary: "#444444", glow: "rgba(136,136,136,0.35)", label: "NOT EARNED" },
+  1: { primary: "#CD7F32", secondary: "#8B4513", glow: "rgba(205,127,50,0.5)", label: "BRONZE" },
+  2: { primary: "#C0C0C0", secondary: "#808080", glow: "rgba(192,192,192,0.5)", label: "SILVER" },
+  3: { primary: "#FFD700", secondary: "#B8860B", glow: "rgba(255,215,0,0.6)", label: "GOLD" },
   4: { primary: "#E5E4E2", secondary: "#9E9E9E", glow: "rgba(229,228,226,0.55)", label: "PLATINUM" },
 } as const;
 
@@ -22,15 +20,33 @@ export async function GET(req: NextRequest) {
     const tierParam = Math.min(4, Math.max(0, Number(searchParams.get("tier")) || 0));
     const currentParam = searchParams.get("current") || "0";
     const nextParam = searchParams.get("next") || "";
+    const pctParam = Math.min(100, Math.max(0, Number(searchParams.get("pct")) || 0));
+    const nextTierName = searchParams.get("nextTier") || "";
 
     const tier = tierParam as 0 | 1 | 2 | 3 | 4;
     const badgeConfig = BADGE_CONFIG[badgeParam] ?? BADGE_CONFIG.pullShark;
     const palette = TIER_PALETTE[tier];
     const hasEarned = tier > 0;
 
-    const statsLine = hasEarned
-      ? `${currentParam} ${badgeConfig.contributionNoun}${nextParam ? ` · Next tier at ${nextParam}` : " · Max tier!"}`
-      : `Start contributing to earn this badge`;
+    const nextTierDisplay = nextTierName || (tier < 4 ? (TIER_LABELS[tier + 1] ?? "") : "");
+
+    const atMax = !nextParam || tier >= 4 || pctParam >= 100;
+    const footerLine = hasEarned
+      ? atMax
+        ? `${currentParam} ${badgeConfig.contributionNoun} — ${TIER_LABELS[tier]}`
+        : nextTierDisplay
+          ? `${currentParam} / ${nextParam} ${badgeConfig.contributionNoun} — ${pctParam}% to ${nextTierDisplay}`
+          : `${currentParam} ${badgeConfig.contributionNoun}`
+      : `Start contributing to earn ${badgeConfig.label}`;
+
+    const leftBg =
+      hasEarned && tier === 3
+        ? `linear-gradient(160deg, ${palette.secondary} 0%, #000 55%), radial-gradient(circle at 30% 20%, rgba(255,215,0,0.35) 0%, transparent 45%), radial-gradient(circle at 70% 80%, rgba(255,180,0,0.2) 0%, transparent 40%)`
+        : hasEarned && tier === 4
+          ? `linear-gradient(160deg, ${palette.secondary} 0%, #000 55%), radial-gradient(circle at 50% 40%, rgba(229,228,226,0.35) 0%, transparent 50%)`
+          : hasEarned
+            ? `linear-gradient(160deg, ${palette.secondary} 0%, #000 60%)`
+            : "linear-gradient(160deg, #1a1a1a 0%, #000 100%)";
 
     return new ImageResponse(
       (
@@ -50,11 +66,10 @@ export async function GET(req: NextRequest) {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              width: 420,
+              width: 480,
               height: 630,
-              background: hasEarned
-                ? `linear-gradient(160deg, ${palette.secondary} 0%, #000 60%)`
-                : "linear-gradient(160deg, #1a1a1a 0%, #000 100%)",
+              background: leftBg,
+              backgroundBlendMode: "normal",
               position: "relative",
               flexShrink: 0,
             }}
@@ -64,14 +79,12 @@ export async function GET(req: NextRequest) {
                 position: "absolute",
                 top: "50%",
                 left: "50%",
-                width: 340,
-                height: 340,
-                marginTop: -170,
-                marginLeft: -170,
+                width: 380,
+                height: 380,
+                marginTop: -190,
+                marginLeft: -190,
                 borderRadius: "50%",
-                background: hasEarned
-                  ? `radial-gradient(circle, ${palette.glow} 0%, transparent 70%)`
-                  : "transparent",
+                background: hasEarned ? `radial-gradient(circle, ${palette.glow} 0%, transparent 72%)` : "transparent",
               }}
             />
 
@@ -81,8 +94,8 @@ export async function GET(req: NextRequest) {
                 src={badgeConfig.image}
                 alt=""
                 style={{
-                  width: 200,
-                  height: 200,
+                  width: 220,
+                  height: 220,
                   objectFit: "contain",
                   filter: hasEarned ? "none" : "grayscale(100%) opacity(40%)",
                 }}
@@ -99,12 +112,12 @@ export async function GET(req: NextRequest) {
                 color: tier === 3 || tier === 4 ? "#000" : "#fff",
                 fontSize: 22,
                 fontWeight: 900,
-                letterSpacing: 4,
-                padding: "10px 32px",
+                letterSpacing: 5,
+                padding: "10px 36px",
                 borderRadius: 999,
               }}
             >
-              {palette.label}
+              <span>{palette.label}</span>
             </div>
           </div>
 
@@ -114,7 +127,7 @@ export async function GET(req: NextRequest) {
               flexDirection: "column",
               justifyContent: "space-between",
               flex: 1,
-              padding: "56px 64px",
+              padding: "52px 56px 48px",
               borderLeft: `4px solid ${hasEarned ? palette.primary : "#222"}`,
             }}
           >
@@ -125,9 +138,9 @@ export async function GET(req: NextRequest) {
                   alignItems: "center",
                   gap: 12,
                   color: palette.primary,
-                  fontSize: 18,
-                  fontWeight: 800,
-                  letterSpacing: 6,
+                  fontSize: 19,
+                  fontWeight: 900,
+                  letterSpacing: 20,
                   textTransform: "uppercase",
                 }}
               >
@@ -136,32 +149,21 @@ export async function GET(req: NextRequest) {
               </div>
             )}
 
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 12,
-              }}
-            >
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div
                 style={{
-                  fontSize: 76,
+                  display: "flex",
+                  fontSize: 72,
                   fontWeight: 900,
                   letterSpacing: -2,
                   color: "#FFFFFF",
-                  lineHeight: 1,
+                  lineHeight: 1.05,
                 }}
               >
                 {badgeConfig.label}
               </div>
-              <div
-                style={{
-                  fontSize: 28,
-                  color: "#8B949E",
-                  fontWeight: 400,
-                }}
-              >
-                {badgeConfig.contributionNoun.charAt(0).toUpperCase() + badgeConfig.contributionNoun.slice(1)} · GitHub Achievement
+              <div style={{ display: "flex", fontSize: 26, color: "#8B949E", fontWeight: 400 }}>
+                {`${badgeConfig.contributionNoun.charAt(0).toUpperCase()}${badgeConfig.contributionNoun.slice(1)} · GitHub Achievement`}
               </div>
             </div>
 
@@ -169,28 +171,21 @@ export async function GET(req: NextRequest) {
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 8,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 16,
-                padding: "24px 32px",
+                gap: 12,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 18,
+                padding: "22px 28px",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  marginBottom: 8,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://github.com/${user}.png?size=80`}
                   alt=""
                   style={{
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     borderRadius: "50%",
                     border: `2px solid ${hasEarned ? palette.primary : "#444"}`,
                   }}
@@ -198,16 +193,33 @@ export async function GET(req: NextRequest) {
                 <span style={{ fontSize: 30, color: "#fff", fontWeight: 700 }}>@{user}</span>
               </div>
 
-              <div
-                style={{
-                  fontSize: 22,
-                  color: hasEarned ? palette.primary : "#666",
-                  fontWeight: 600,
-                  fontFamily: "monospace",
-                }}
-              >
-                {statsLine}
+              <div style={{ display: "flex", fontSize: 21, color: hasEarned ? "#E6EDF3" : "#666", fontWeight: 600, lineHeight: 1.35 }}>
+                {footerLine}
               </div>
+
+              {hasEarned && !atMax && nextParam !== "" && (
+                <div
+                  style={{
+                    display: "flex",
+                    width: "100%",
+                    height: 10,
+                    background: "rgba(255,255,255,0.08)",
+                    borderRadius: 99,
+                    overflow: "hidden",
+                    marginTop: 4,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      height: "100%",
+                      width: `${pctParam}%`,
+                      background: `linear-gradient(90deg, ${palette.primary}aa, ${palette.primary})`,
+                      borderRadius: 99,
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div
@@ -216,7 +228,7 @@ export async function GET(req: NextRequest) {
                 alignItems: "center",
                 gap: 12,
                 color: "#484F58",
-                fontSize: 20,
+                fontSize: 19,
                 fontWeight: 700,
               }}
             >
@@ -226,12 +238,9 @@ export async function GET(req: NextRequest) {
           </div>
         </div>
       ),
-      {
-        width: 1200,
-        height: 630,
-      }
+      { width: 1200, height: 630 }
     );
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("[OG Badge]", e);
     return new Response("Failed to generate image", { status: 500 });
   }
