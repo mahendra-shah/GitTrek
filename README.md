@@ -171,7 +171,6 @@ For unauthenticated users, a REST fallback provides limited results (10 per page
 ## Roadmap
 
 - [ ] **Badge Tracker** — Track GitHub achievements (Pull Shark, YOLO, Galaxy Brain) by connecting to your own activity
-- [ ] **Waitlist** — Join to get early access notifications → [join the waitlist](https://gittrek.dev)
 - [ ] **Saved Searches** — Persist filter presets across sessions
 - [ ] **Issue Bookmarks** — Star issues to revisit later
 - [ ] **Contribution History** — Track PRs you've opened from discovered issues

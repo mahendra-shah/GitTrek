@@ -33,7 +33,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env
+.env.local
+.env.production
+
 
 # vercel
 .vercel
@@ -47,16 +50,15 @@ CLAUDE.md
 AGENTS.md
 
 # Drafts and Test Scripts
-/docs/github-badge-tracker-PRD-v2.md
 test-gql.js
 test-search.js
 playwright-report/
 test-results/
 badge.md
 SEO_STRATEGY.md
-qa_audit_report.md
-qa_stability_challenge_report.md
+gittrek-oss.md
 
 # Local notes (not pushed)
 docs/mydoc.md
+docs/TODOS.md
 

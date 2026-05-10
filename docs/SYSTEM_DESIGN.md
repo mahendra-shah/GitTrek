@@ -42,10 +42,10 @@ To prevent abuse of the token pool, guest users are also limited by a local per-
 
 ## Caching Hierarchy (V2)
 
-Contrary to earlier design phases, GitTrek now employs a 3-layer caching strategy:
+Contrary to earlier design phases, GitTrek now employs a 2-layer caching strategy:
 
 1.  **Browser Cache (TanStack Query)**:
-    - **Scope**: Local to the user's browser.
+    - **Scope**: Local to the user's browser (LocalStorage persistence).
     - **Duration**: 15 minutes.
     - **Purpose**: Prevents re-fetching when toggling views or going back/forward in pagination.
 
@@ -53,11 +53,6 @@ Contrary to earlier design phases, GitTrek now employs a 3-layer caching strateg
     - **Scope**: Local to a warm Vercel function instance.
     - **Duration**: 5 minutes.
     - **Purpose**: If multiple users search for the same thing (e.g., "React good first issues") at the same time, only one call hits GitHub.
-
-3.  **Edge CDN Cache (Vercel Global)**:
-    - **Scope**: Global (Vercel's Edge Network).
-    - **Duration**: 5 minutes (s-maxage=300).
-    - **Purpose**: Offloads repeat guest traffic entirely. The search request never even reaches the GitTrek server.
 
 ---
 
@@ -80,7 +75,7 @@ The filter payload is complex. Using POST:
 1.  Avoids URL length limits.
 2.  Allows for cleaner `application/json` bodies.
 3.  Prevents search parameters from polluting browser history.
-4.  **Caveat**: Since it's a POST, browsers don't cache it by default. We manually enabled caching using `Cache-Control` headers, which Vercel's CDN respects even for POST requests (when configured correctly).
+4.  **Caveat**: Since it's a POST and uses `force-dynamic`, Vercel CDN and Next.js Data Cache do not cache these requests. We rely entirely on our custom in-memory Server Instance Cache and the client-side TanStack Query cache.
 
 ---
 
