@@ -536,8 +536,8 @@ function HomeContentInner({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs }: 
                           const updated = {
                             ...draft,
                             contributionType: val,
-                            // PRESERVE ALL draft state across tab switches for user convenience
-                            labels: draft.labels,
+                            // PRESERVE ALL draft state across tab switches, except clear labels for discussions
+                            labels: val === "discussion" ? [] : draft.labels,
                             languages: draft.languages,
                             text: draft.text,
                             activeMaintainer: draft.activeMaintainer,
