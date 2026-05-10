@@ -27,6 +27,10 @@ describe('buildIssueSearchQuery', () => {
     const result = buildIssueSearchQuery(defaultFilters);
     expect(result.query).toContain('is:issue is:open archived:false');
     expect(result.query).toContain('created:>='); // dynamically generated based on current date
+    // REGRESSION: fork:false breaks GitHub search (returns 0). Forks are excluded by default.
+    expect(result.query).not.toContain('fork:false');
+    // REGRESSION: sort:X-Y is invalid in GraphQL query string. Sort uses URL/GQL params.
+    expect(result.query).not.toContain('sort:');
     expect(result.warnings).toHaveLength(0);
   });
 
@@ -82,15 +86,29 @@ describe('buildIssueSearchQuery', () => {
     expect(result.query).not.toContain('label:"7"');
   });
 
-  it("adds active maintainer filter (recent push)", () => {
+  it("activeMaintainer=true: query does NOT contain pushed:>= (GitHub issue search ignores it and returns 0)", () => {
+    // IMPORTANT: pushed: in GitHub issue search combined with other qualifiers returns near-zero results.
+    // activeMaintainer is enforced via the quality gate (repoPushedDays) NOT in the query string.
     const result = buildIssueSearchQuery({ ...defaultFilters, activeMaintainer: true });
-    expect(result.query).toContain("pushed:>=");
+    expect(result.query).not.toContain("pushed:>=");
   });
 
   it("adds pairing keyword filter", () => {
     const result = buildIssueSearchQuery({ ...defaultFilters, pairingRequested: true });
     expect(result.query).toContain("pair with me");
     expect(result.query).toContain("in:comments");
+  });
+
+  it("REGRESSION #1: fork:false must never appear — it is an invalid qualifier returning 0 results", () => {
+    const result = buildIssueSearchQuery(defaultFilters);
+    expect(result.query).not.toContain('fork:false');
+  });
+
+  it("REGRESSION #2: sort:X-Y must never appear in query string (invalid in GraphQL search)", () => {
+    const withSort = buildIssueSearchQuery({ ...defaultFilters, sort: 'created' as const, order: 'desc' as const });
+    const withSort2 = buildIssueSearchQuery({ ...defaultFilters, sort: 'updated' as const, order: 'asc' as const });
+    expect(withSort.query).not.toContain('sort:');
+    expect(withSort2.query).not.toContain('sort:');
   });
 });
 
@@ -130,7 +148,7 @@ describe("buildIssueSearchQuery (discussions)", () => {
 });
 
 function item(
-  opts: Partial<IssueSearchItem> & { repository?: Partial<IssueSearchItem["repository"]> }
+  opts: Omit<Partial<IssueSearchItem>, "repository"> & { repository?: Partial<IssueSearchItem["repository"]> }
 ): IssueSearchItem {
   const { repository: repoPartial, ...rest } = opts;
   const repository: IssueSearchItem["repository"] = {
@@ -153,7 +171,6 @@ function item(
     labels: [],
     owner: "o",
     repo: "r",
-    repository,
     ...rest,
     repository,
   };

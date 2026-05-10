@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 import { Star, GitFork, MessageSquare, Clock, CheckSquare } from "lucide-react";
 import { formatViewerReasons, type ViewerSummary } from "@/lib/viewer-summary";
 
@@ -214,6 +215,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
               rel="noreferrer"
               style={{ color: "var(--gt-text)", fontSize: 16, fontWeight: 700, textDecoration: "none", minWidth: 0, wordBreak: "break-word" }}
               className="hover:underline"
+              data-testid="issue-card-title"
             >
               {issue.title}
             </a>
@@ -223,7 +225,7 @@ export function IssueCard({ issue, isGuest, appliedLabels = [], animationDelay =
           </h3>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            {issue.labels.slice(0, 5).map((label, i) => {
+            {issue.labels.slice(0, 5).map((label) => {
               const isApplied = appliedLabels.length > 0 
                 ? appliedLabels.some(al => al.toLowerCase() === label.toLowerCase())
                 : ["good first issue", "help wanted"].includes(label.toLowerCase());

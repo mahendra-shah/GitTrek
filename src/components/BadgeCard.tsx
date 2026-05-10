@@ -39,9 +39,10 @@ export function BadgeCard({ badge, loopUrl, username, isHighlighted, index = 0, 
 
   useEffect(() => {
     if (isHighlighted && cardRef.current) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 500); // Wait for initial render
+      return () => clearTimeout(timer);
     }
   }, [isHighlighted]);
 

@@ -36,7 +36,8 @@ export async function GET() {
     data.activeSearchLimit = sessionToken ? data.resources.graphql : (data.resources.search || data.resources.graphql);
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

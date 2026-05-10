@@ -18,7 +18,7 @@ export function UserLookup({ initialUsername = "", signedInUser }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = value.trim();
+    const trimmed = value.trim().replace(/^@+/, "");
     if (!trimmed) return;
     startTransition(() => {
       router.push(`/badges?user=${encodeURIComponent(trimmed)}`);

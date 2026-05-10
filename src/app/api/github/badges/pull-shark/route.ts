@@ -20,7 +20,7 @@ function githubHeaders(token: string) {
   };
 }
 
-async function resolveToken(username?: string): Promise<string | null> {
+async function resolveToken(): Promise<string | null> {
   // For a user looking up someone else (or any-user mode), use the bot token.
   const userToken = await getToken();
   if (userToken) return userToken;
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   const { username } = parsed.data;
-  const token = await resolveToken(username);
+  const token = await resolveToken();
 
   if (!token) {
     return NextResponse.json(

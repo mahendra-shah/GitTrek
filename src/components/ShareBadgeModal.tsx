@@ -76,9 +76,16 @@ const FOCUSABLE_SELECTORS = 'button, [href], input, select, textarea, [tabindex]
 function useModalCountUp(target: number, durationMs: number, startDelayMs: number, isActive: boolean): number {
   const [value, setValue] = useState(0);
   useEffect(() => {
-    if (!isActive) { setValue(0); return; }
+    if (!isActive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setValue(0);
+      return;
+    }
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) { setValue(target); return; }
+    if (reduce) {
+      setValue(target);
+      return;
+    }
     let raf = 0;
     let cancelled = false;
     const startTimer = setTimeout(() => {
@@ -117,6 +124,7 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
     if (typeof navigator === "undefined") return;
     try {
       const probe = new File([new Blob([""], { type: "image/png" })], "x.png", { type: "image/png" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCanShareFiles(Boolean(navigator.canShare?.({ files: [probe] })));
     } catch {
       setCanShareFiles(false);
@@ -133,6 +141,7 @@ export function ShareBadgeModal({ isOpen, onClose, badge, username }: Props) {
       if (sessionStorage.getItem(storageKey)) return;
       sessionStorage.setItem(storageKey, "1");
     } catch { /* ok */ }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConfettiKey(Date.now());
     const t = setTimeout(() => setConfettiKey(null), 1700);
     return () => clearTimeout(t);

@@ -30,7 +30,10 @@ export function TagInput({ id, value, onChange, suggestions, placeholder }: TagI
   const remove = (tag: string) => onChange(value.filter(t => t !== tag));
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && inputValue.trim()) { e.preventDefault(); add(inputValue); }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (inputValue.trim()) add(inputValue);
+    }
     else if (e.key === "Backspace" && !inputValue && value.length) remove(value[value.length - 1]);
     else if (e.key === "Escape") setOpen(false);
   };

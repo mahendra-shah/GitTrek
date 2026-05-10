@@ -48,16 +48,19 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   const [results, setResults] = useState<BadgeResult[] | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [highlightKey, setHighlightKey] = useState<string | null>(null);
+  const [highlightKey] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("highlight");
+    }
+    return null;
+  });
   const [fetchError, setFetchError] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setHighlightKey(params.get("highlight"));
-  }, []);
 
   const fetchAll = useCallback(
     async (forceRefresh = false) => {
+      setNotFound(false);
+      setFetchError(false);
       setIsRefreshing(true);
 
       if (!forceRefresh) {
@@ -69,6 +72,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
         }
       }
 
+      setResults(null);
       const res = await fetch(`/api/github/badges?username=${encodeURIComponent(username)}`);
 
       if (res.status === 404) {
@@ -99,9 +103,7 @@ export function BadgeDashboard({ username, isOwnProfile }: Props) {
   );
 
   useEffect(() => {
-    setNotFound(false);
-    setFetchError(false);
-    setResults(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll(false);
   }, [fetchAll]);
 

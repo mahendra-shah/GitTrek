@@ -79,7 +79,7 @@ describe('IssueCard Component', () => {
   });
 
   it('renders labels and applies active styling based on appliedLabels', () => {
-    const { container } = render(
+    render(
       <IssueCard issue={mockIssue} appliedLabels={['bug']} />
     );
     

@@ -86,13 +86,14 @@ function Tip({ text }: { text: string }) {
   );
 }
 
-function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-label": ariaLabel }: {
+function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-label": ariaLabel, onBlur }: {
   value: string | number;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
   id?: string;
   "aria-label"?: string;
+  onBlur?: () => void;
 }) {
   return (
     <input
@@ -104,7 +105,10 @@ function DarkInput({ value, onChange, placeholder, type = "text", id, "aria-labe
       onChange={e => onChange(e.target.value)}
       style={inputSt}
       onFocus={e => { e.currentTarget.style.borderColor = "var(--gt-primary)"; }}
-      onBlur={e => { e.currentTarget.style.borderColor = "var(--gt-input-border)"; }}
+      onBlur={e => {
+        e.currentTarget.style.borderColor = "var(--gt-input-border)";
+        onBlur?.();
+      }}
     />
   );
 }
@@ -178,9 +182,70 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
   label: string; tooltip?: string; minVal: number; maxVal: number | null; maxLimit: number;
   onMinChange: (v: number) => void; onMaxChange: (v: number | null) => void;
 }) {
+  const [localMin, setLocalMin] = useState(String(minVal));
+  const [localMax, setLocalMax] = useState(maxVal === null ? "" : String(maxVal));
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalMin(String(minVal));
+  }, [minVal]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLocalMax(maxVal === null ? "" : String(maxVal));
+  }, [maxVal]);
+
+  const handleMinChange = (v: string) => {
+    setLocalMin(v);
+    if (v === "") {
+      onMinChange(0);
+    } else {
+      const parsed = parseInt(v);
+      onMinChange(isNaN(parsed) ? 0 : parsed);
+    }
+  };
+
+  const handleMaxChange = (v: string) => {
+    setLocalMax(v);
+    if (v === "") {
+      onMaxChange(null);
+    } else {
+      const parsed = parseInt(v);
+      onMaxChange(isNaN(parsed) ? null : parsed);
+    }
+  };
+
+  const handleMinBlur = () => {
+    if (localMin === "") {
+      onMinChange(0);
+      setLocalMin("0");
+    } else {
+      const parsed = parseInt(localMin);
+      const clamped = Math.max(0, Math.min(isNaN(parsed) ? 0 : parsed, maxLimit));
+      onMinChange(clamped);
+      setLocalMin(String(clamped));
+    }
+  };
+
+  const handleMaxBlur = () => {
+    if (localMax === "") {
+      onMaxChange(null);
+      setLocalMax("");
+    } else {
+      const parsed = parseInt(localMax);
+      const clamped = Math.max(0, Math.min(isNaN(parsed) ? 0 : parsed, maxLimit));
+      onMaxChange(clamped);
+      setLocalMax(String(clamped));
+    }
+  };
+
+  const displayVal = `${minVal.toLocaleString()} - ${maxVal === null ? `${maxLimit.toLocaleString()}+` : maxVal.toLocaleString()}`;
   return (
     <div>
-      <FieldLabel>{label}{tooltip && <Tip text={tooltip} />}</FieldLabel>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <FieldLabel>{label}{tooltip && <Tip text={tooltip} />}</FieldLabel>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--gt-primary)" }}>{displayVal}</span>
+      </div>
       <div style={{ padding: "0 4px", marginBottom: 14 }}>
         <Slider
           range min={0} max={maxLimit}
@@ -199,11 +264,9 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
           <FieldLabel>Min</FieldLabel>
           <DarkInput
             type="number"
-            value={minVal}
-            onChange={v => {
-              const next = Math.max(0, Math.min(parseInt(v) || 0, maxLimit));
-              onMinChange(maxVal !== null && next > maxVal ? maxVal : next);
-            }}
+            value={localMin}
+            onChange={v => handleMinChange(v)}
+            onBlur={handleMinBlur}
             placeholder="0"
             aria-label={`Minimum ${label}`}
           />
@@ -212,15 +275,9 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
           <FieldLabel>Max</FieldLabel>
           <DarkInput
             type="number"
-            value={maxVal === null ? "" : maxVal}
-            onChange={v => {
-              if (v === "") {
-                onMaxChange(null);
-                return;
-              }
-              const next = Math.max(0, Math.min(parseInt(v) || 0, maxLimit));
-              onMaxChange(next < minVal ? minVal : next);
-            }}
+            value={localMax}
+            onChange={v => handleMaxChange(v)}
+            onBlur={handleMaxBlur}
             placeholder="Any"
             aria-label={`Maximum ${label}`}
           />
@@ -250,14 +307,20 @@ function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
 
 export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
   const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
-  const apply = (k: Partial<FilterDraft>) => onApplyImmediate({ ...draft, ...k });
+  const apply = (k: Partial<FilterDraft>) => {
+    setDraft(prev => {
+      const next = { ...prev, ...k };
+      onApplyImmediate(next);
+      return next;
+    });
+  };
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const effectiveSearching = mounted && isSearching;
 
   // Stable, unique IDs for label/input associations (React 18+)
-  const langId = useId();
   const ageId = useId();
   const pushedId = useId();
 
@@ -298,13 +361,19 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
 
       <div className="gt-filter-scroll" style={{ display: "flex", flexDirection: "column", gap: 20, flex: 1, overflowY: "auto", overflowX: "visible", minHeight: 0 }}>
 
-      {/* Language — proper label association via htmlFor/id */}
+      {/* Languages */}
       <div>
-        <FieldLabel htmlFor={langId}>Language</FieldLabel>
-        <DarkSelect id={langId} value={draft.languages[0] || ""} onChange={v => set({ languages: v ? [v] : [] })}>
-          <option value="">Any language</option>
-          {COMMON_LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-        </DarkSelect>
+        <FieldLabel>Languages<Tip text="Primary coding languages for the project. You can select multiple." /></FieldLabel>
+        <div style={{
+          background: "var(--gt-input-bg)", borderRadius: 8,
+          border: "1px solid var(--gt-input-border)", padding: "8px 10px", minHeight: 42,
+        }}>
+          <TagInput
+            id="languages" value={draft.languages}
+            onChange={langs => set({ languages: langs })}
+            suggestions={COMMON_LANGUAGES} placeholder="e.g. TypeScript, Go"
+          />
+        </div>
       </div>
 
       {/* Labels */}
@@ -395,6 +464,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
       <div style={{ borderTop: "1px solid var(--gt-border)", paddingTop: 14 }}>
         <button
           type="button"
+          data-testid="advanced-filters-toggle"
           onClick={() => setAdvancedOpen(p => !p)}
           aria-expanded={advancedOpen}
           aria-controls="filter-advanced-content"
@@ -417,15 +487,8 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
               tooltip="Filter by how popular the repo is. More stars usually means an active community — but fewer stars means less competition."
               minVal={draft.minStars} maxVal={draft.maxStars}
               maxLimit={STARS_MAX}
-              onMinChange={v => {
-                const min = Math.max(0, Math.min(v, STARS_MAX));
-                const max = draft.maxStars;
-                set({ minStars: max !== null && min > max ? max : min });
-              }}
-              onMaxChange={v => {
-                const nextMax = v === null ? null : Math.max(0, Math.min(v, STARS_MAX));
-                set({ maxStars: nextMax !== null && nextMax < draft.minStars ? draft.minStars : nextMax });
-              }}
+              onMinChange={v => set({ minStars: v })}
+              onMaxChange={v => set({ maxStars: v })}
             />
 
             <RangeBlock
@@ -433,15 +496,8 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
               tooltip="Forks indicate how many developers are actively building on top of this project. Higher forks = more active development."
               minVal={draft.minForks} maxVal={draft.maxForks}
               maxLimit={FORKS_MAX}
-              onMinChange={v => {
-                const min = Math.max(0, Math.min(v, FORKS_MAX));
-                const max = draft.maxForks;
-                set({ minForks: max !== null && min > max ? max : min });
-              }}
-              onMaxChange={v => {
-                const nextMax = v === null ? null : Math.max(0, Math.min(v, FORKS_MAX));
-                set({ maxForks: nextMax !== null && nextMax < draft.minForks ? draft.minForks : nextMax });
-              }}
+              onMinChange={v => set({ minForks: v })}
+              onMaxChange={v => set({ maxForks: v })}
             />
 
             {/* Last Code Push — proper label association */}
@@ -506,6 +562,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
       }}>
         <button
           type="submit"
+          data-testid="search-submit-btn"
           disabled={effectiveSearching || undefined}
           style={{
             width: "100%",

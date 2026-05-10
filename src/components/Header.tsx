@@ -128,7 +128,6 @@ export function Header({ children }: { children?: React.ReactNode }) {
           <div className="gt-header-logo" style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
             <picture>
               <source srcSet="/logo-light.svg" media="(prefers-color-scheme: dark)" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-dark.svg" alt="" role="presentation" style={{ height: 34, width: 34, borderRadius: 9 }} />
             </picture>
             <span style={{ color: "var(--gt-primary)", fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em" }}>
