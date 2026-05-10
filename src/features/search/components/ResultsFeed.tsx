@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSearch } from "../context/SearchContext";
 import { IssueCard, IssueItem } from "../../../components/IssueCard";
 import { Pagination } from "../../../components/Pagination";
@@ -88,17 +88,6 @@ export function ResultsFeed() {
     setIsSearching(searchQuery.isFetching);
   }, [searchQuery.isFetching, setIsSearching]);
 
-  const queryClient = useQueryClient();
-  useEffect(() => {
-    const rl = searchQuery.data?.rate_limit;
-    if (rl && rl.limit) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryClient.setQueryData(["rateLimit"], (old: any) => ({
-        ...old,
-        activeSearchLimit: rl,
-      }));
-    }
-  }, [searchQuery.data?.rate_limit, queryClient]);
 
   const resetPagination = () => {
     setCurrentPage(1);
