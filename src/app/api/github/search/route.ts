@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -5,7 +6,6 @@ import { getToken } from "@/lib/auth/adapter";
 import {
   buildIssueSearchQuery,
   filterByRepoQuality,
-  IssueSearchItem,
 } from "@/lib/github/search";
 import type {
   ViewerEngagementReason,
@@ -28,14 +28,22 @@ const resultCache = new Map<string, CacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_MAX = 200;
 
-function makeCacheKey(filters: Filters): string {
+function makeCacheKey(filters: Filters, options: { global: boolean }): string {
   // Exclude pagination fields — cache is per unique query, not per page
-  const { page: _p, cursor: _c, perPage: _pp, ...queryFilters } = filters;
+  const { page: _p, cursor: _c, perPage: _pp, viewerLogin, ...queryFilters } = filters;
+  
+  // For global cache, we completely ignore viewerLogin.
+  // For personalized cache, we MUST include it to prevent cross-contamination.
+  const baseFilters = options.global 
+    ? queryFilters 
+    : { ...queryFilters, viewerLogin: viewerLogin || "guest" };
+
   // Sort keys so identical filters in different order produce the same key
   const sorted = Object.fromEntries(
-    Object.entries(queryFilters).sort(([a], [b]) => a.localeCompare(b))
+    Object.entries(baseFilters).sort(([a], [b]) => a.localeCompare(b))
   );
-  return Buffer.from(JSON.stringify(sorted)).toString("base64").slice(0, 64);
+  // Do NOT slice — truncation to 64 chars causes collisions between different filter combos
+  return Buffer.from(JSON.stringify(sorted)).toString("base64");
 }
 
 function cacheGet(key: string): unknown | null {
@@ -64,11 +72,11 @@ const FilterSchema = z.object({
   zeroComments: z.boolean().optional().default(false),
   noAssignee: z.boolean().optional().default(true),
   issueAgeDays: z.number().int().min(1).max(3650).optional().default(30),
-  minStars: z.number().int().min(0).optional().default(100),
+  minStars: z.number().int().min(0).optional().default(500),
   maxStars: z.number().int().min(0).optional().nullable().default(null),
-  minForks: z.number().int().min(0).optional().default(50),
+  minForks: z.number().int().min(0).optional().default(100),
   maxForks: z.number().int().min(0).optional().nullable().default(null),
-  repoPushedDays: z.number().int().min(1).max(3650).optional().default(90),
+  repoPushedDays: z.number().int().min(1).max(3650).optional().default(30),
   hasContributing: z.boolean().optional().default(false),
   org: z.string().trim().optional(),
   onlyOrgs: z.boolean().optional().default(false),
@@ -85,6 +93,28 @@ const FilterSchema = z.object({
 });
 
 type Filters = z.infer<typeof FilterSchema>;
+
+function isDefaultSearch(f: Filters) {
+  return (
+    f.text === "" &&
+    f.languages.length === 0 &&
+    (f.labels?.length === 1 && f.labels[0] === "good first issue") &&
+    f.zeroComments === false &&
+    f.issueAgeDays === 30 &&
+    f.minStars === 500 &&
+    f.maxStars === null &&
+    f.minForks === 100 &&
+    f.maxForks === null &&
+    f.repoPushedDays === 30 &&
+    f.noAssignee === true &&
+    f.hasContributing === false &&
+    !f.org &&
+    f.onlyOrgs === false &&
+    f.type === "issue" &&
+    f.activeMaintainer === false &&
+    f.pairingRequested === false
+  );
+}
 
 function buildViewerSummary(
   viewerLogin: string | undefined,
@@ -464,6 +494,7 @@ export async function POST(request: Request) {
     }
 
     const { query: q, warnings: qWarnings } = buildIssueSearchQuery(filters);
+
     if (!q) {
       return NextResponse.json({
         total_count: 0, incomplete_results: false, filtered_out: 0,
@@ -472,9 +503,22 @@ export async function POST(request: Request) {
       });
     }
 
-    // Guest first page only (auth payloads are viewer-specific).
     const isFirstPage = filters.page === 1 && !filters.cursor;
-    const cacheKey = isFirstPage && !userToken ? makeCacheKey(filters) : null;
+    const isDefault = isDefaultSearch(filters);
+    
+    let cacheKey: string | null = null;
+
+    if (isFirstPage) {
+      if (isDefault) {
+        // Global Fast-Path: Force the cache key to ignore viewerLogin.
+        // The fetch logic below will automatically use a bot token.
+        cacheKey = makeCacheKey(filters, { global: true });
+      } else {
+        // Personalized Cache: Include viewerLogin in the cache key so it's private to them.
+        cacheKey = makeCacheKey(filters, { global: false });
+      }
+    }
+
     if (cacheKey) {
       const cached = cacheGet(cacheKey);
       if (cached) {
@@ -482,18 +526,24 @@ export async function POST(request: Request) {
       }
     }
 
+
     const isDiscussion = filters.type === "discussion";
     let validItems: any[] = [];
     let qualityFiltered = 0;
     let searchResult: any;
+    let finalHasMore = false;
+    let finalEndCursor: string | null = null;
 
     try {
       if (token) {
-        // One GraphQL fetch: ~2.5× page size, cap 50, then trim after quality filters.
-        const fetchSize = Math.min(Math.ceil(filters.perPage * 2.5), 50);
+        // One GraphQL fetch: larger buffer (4x) to ensure quality filters have a decent pool.
+        // Cap at 100 (GitHub max per page).
+        const fetchSize = Math.min(Math.ceil(filters.perPage * 4), 100);
 
-        // Guests: try pool tokens in order; exhaust on 429 and continue.
-        const tokensToTry: string[] = userToken
+        // Guests OR Global Fast-Path: try pool tokens in order; exhaust on 429 and continue.
+        // Auth users (Personalized Cache): use their personal token.
+        const isGlobalFastPath = isFirstPage && isDefault;
+        const tokensToTry: string[] = (userToken && !isGlobalFastPath)
           ? [userToken]
           : botTokenPool.getAvailableTokens();
 
@@ -505,6 +555,7 @@ export async function POST(request: Request) {
         }
 
         let lastRateLimitError: any = null;
+        let activeToken = "";
         for (const candidateToken of tokensToTry) {
           try {
             searchResult = await searchGraphQL(candidateToken, q, {
@@ -512,6 +563,7 @@ export async function POST(request: Request) {
               cursor: filters.cursor || null,
               perPage: fetchSize,
             });
+            activeToken = candidateToken;
             lastRateLimitError = null;
             break; // success — stop trying
           } catch (err: any) {
@@ -536,7 +588,11 @@ export async function POST(request: Request) {
         let fetchedItems = searchResult.items;
 
         if (!isDiscussion && filters.noAssignee) {
-          fetchedItems = fetchedItems.filter((i: any) => i.assignees.length === 0);
+          fetchedItems = fetchedItems.filter((i: any) => !i.assignees || i.assignees.length === 0);
+        }
+
+        if (filters.zeroComments) {
+          fetchedItems = fetchedItems.filter((i: any) => i.comments === 0);
         }
 
         const qualityResult = isDiscussion
@@ -545,6 +601,46 @@ export async function POST(request: Request) {
 
         qualityFiltered = qualityResult.filteredOut;
         validItems = qualityResult.items;
+
+        finalHasMore = searchResult.hasMore;
+        finalEndCursor = searchResult.endCursor;
+        let currentCursor = searchResult.endCursor;
+        let loopCount = 0;
+
+        // Oversampling accumulation loop: if we have fewer valid items than requested perPage,
+        // and there are more items available on GitHub, fetch the next batch recursively (max 3 times)
+        // to fill the page size and avoid disappointing empty or near-empty pages.
+        while (validItems.length < filters.perPage && finalHasMore && loopCount < 3) {
+          loopCount++;
+          const nextResult = await searchGraphQL(activeToken, q, {
+            ...filters,
+            cursor: currentCursor,
+            perPage: fetchSize,
+          });
+
+          let nextItems = nextResult.items;
+
+          if (!isDiscussion && filters.noAssignee) {
+            nextItems = nextItems.filter((i: any) => !i.assignees || i.assignees.length === 0);
+          }
+
+          if (filters.zeroComments) {
+            nextItems = nextItems.filter((i: any) => i.comments === 0);
+          }
+
+          const nextQuality = isDiscussion
+            ? { items: nextItems, filteredOut: 0 }
+            : filterByRepoQuality(nextItems as any, filters);
+
+          qualityFiltered += nextQuality.filteredOut;
+          validItems = [...validItems, ...nextQuality.items];
+          
+          finalHasMore = nextResult.hasMore;
+          finalEndCursor = nextResult.endCursor;
+          currentCursor = nextResult.endCursor;
+          
+          if (!finalHasMore) break;
+        }
 
         // Trim to requested page size
         if (validItems.length > filters.perPage) {
@@ -555,12 +651,14 @@ export async function POST(request: Request) {
         searchResult = await searchREST(q, filters);
         validItems = searchResult.items;
         if (filters.noAssignee) {
-          validItems = validItems.filter((i: any) => i.assignees.length === 0);
+          validItems = validItems.filter((i: any) => !i.assignees || i.assignees.length === 0);
         }
+        finalHasMore = searchResult.hasMore;
+        finalEndCursor = searchResult.endCursor;
       }
     } catch (error: any) {
       if (error.message === "rate limit") {
-        return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+        return NextResponse.json({ error: "Rate limit exceeded. Please sign in with GitHub for unlimited searches." }, { status: 429 });
       }
       if (error.message === "unauthorized") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -576,8 +674,8 @@ export async function POST(request: Request) {
         const { assignees, ...rest } = item;
         return rest;
       }),
-      hasMore: searchResult.hasMore,
-      endCursor: searchResult.endCursor,
+      hasMore: finalHasMore,
+      endCursor: finalEndCursor,
       warnings: qWarnings,
       rate_limit: searchResult.rateLimit
     };

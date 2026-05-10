@@ -19,6 +19,8 @@
 
 # production
 /build
+test-results
+
 
 # misc
 .DS_Store
@@ -52,6 +54,8 @@ playwright-report/
 test-results/
 badge.md
 SEO_STRATEGY.md
+qa_audit_report.md
+qa_stability_challenge_report.md
 
 # Local notes (not pushed)
 docs/mydoc.md

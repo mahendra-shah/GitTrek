@@ -28,17 +28,17 @@ type SearchResponse = {
 
 type SessionUser = { login: string; name: string | null; avatarUrl: string; htmlUrl: string };
 
-const DEFAULT: FilterDraft = {
+export const DEFAULT: FilterDraft = {
   text: "",
   languages: [],
-  labels: ["good first issue", "help wanted"],
+  labels: ["good first issue"],
   zeroComments: false,
-  issueAgeDays: 30,
-  minStars: 100,
+  issueAgeDays: 30,     // Issues created in last 30 days
+  minStars: 500,        // Repos with >=500 stars (active community)
   maxStars: null,
-  minForks: 50,
+  minForks: 100,        // Repos with >=100 forks (well-forked)
   maxForks: null,
-  repoPushedDays: 90,
+  repoPushedDays: 30,   // Repos with recent activity (last 30 days)
   noAssignee: true,
   hasContributing: false,
   org: "",
@@ -48,7 +48,7 @@ const DEFAULT: FilterDraft = {
   pairingRequested: false,
 };
 
-const EMPTY_FILTERS: FilterDraft = {
+export const EMPTY_FILTERS: FilterDraft = {
   text: "",
   languages: [],
   labels: [],
@@ -68,7 +68,7 @@ const EMPTY_FILTERS: FilterDraft = {
   pairingRequested: false,
 };
 
-function countActiveFilters(draft: FilterDraft, hideLinkedPRs: boolean): number {
+export function countActiveFilters(draft: FilterDraft, hideLinkedPRs: boolean): number {
   let count = 0;
   if (draft.text.trim()) count++;
   if (draft.languages.length) count++;
@@ -89,7 +89,10 @@ function countActiveFilters(draft: FilterDraft, hideLinkedPRs: boolean): number 
   return count;
 }
 
-function HomeContent() {
+function HomeContentInner({ draft, setDraft, hideLinkedPRs, setHideLinkedPRs }: {
+  draft: FilterDraft; setDraft: React.Dispatch<React.SetStateAction<FilterDraft>>;
+  hideLinkedPRs: boolean; setHideLinkedPRs: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
   const sessionQuery = useQuery<SessionUser | null>({
     queryKey: ["session"],
     queryFn: async () => {
@@ -101,24 +104,12 @@ function HomeContent() {
     staleTime: 1000 * 60 * 5,
   });
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   const isGuest = mounted && !sessionQuery.isLoading && sessionQuery.data === null;
 
-  const searchParams = useSearchParams();
 
-  const [draft, setDraft] = useState<FilterDraft>(() => {
-    if (!searchParams) return DEFAULT;
-    const fromUrl: FilterDraft = { ...DEFAULT };
-    if (searchParams.has("labels")) fromUrl.labels = searchParams.get("labels")!.split(",");
-    if (searchParams.has("noAssignee")) fromUrl.noAssignee = searchParams.get("noAssignee") === "true";
-    if (searchParams.has("zeroComments")) fromUrl.zeroComments = searchParams.get("zeroComments") === "true";
-    if (searchParams.has("discussions")) fromUrl.contributionType = "discussion";
-    if (searchParams.has("text")) fromUrl.text = searchParams.get("text")!;
-    return fromUrl;
-  });
-  
-  const [hideLinkedPRs, setHideLinkedPRs] = useState(() => searchParams?.get("hideLinkedPRs") === "true");
 
   const [filterOpen, setFilterOpen] = useState(false);
   const [legendOpen, setLegendOpen] = useState(false);
@@ -126,30 +117,47 @@ function HomeContent() {
   const syncUrlFromDraft = useCallback((d: FilterDraft, hidePRs: boolean) => {
     const params = new URLSearchParams();
     if (d.text) params.set("text", d.text);
+    if (d.languages.length) params.set("languages", d.languages.join(","));
     if (d.labels.length) params.set("labels", d.labels.join(","));
-    if (d.noAssignee) params.set("noAssignee", "true");
     if (d.zeroComments) params.set("zeroComments", "true");
+    if (d.noAssignee) params.set("noAssignee", "true");
     if (d.contributionType === "discussion") params.set("discussions", "true");
     if (hidePRs) params.set("hideLinkedPRs", "true");
+    if (d.issueAgeDays !== DEFAULT.issueAgeDays) params.set("age", String(d.issueAgeDays));
+    if (d.minStars > 0) params.set("minStars", String(d.minStars));
+    if (d.maxStars !== null) params.set("maxStars", String(d.maxStars));
+    if (d.minForks > 0) params.set("minForks", String(d.minForks));
+    if (d.maxForks !== null) params.set("maxForks", String(d.maxForks));
+    if (d.repoPushedDays !== DEFAULT.repoPushedDays) params.set("pushed", String(d.repoPushedDays));
+    if (d.org) params.set("org", d.org);
+    if (d.onlyOrgs) params.set("onlyOrgs", "true");
+    if (d.activeMaintainer) params.set("active", "true");
+    if (d.pairingRequested) params.set("pairing", "true");
+
     const qs = params.toString();
     window.history.replaceState(null, "", qs ? `/?${qs}` : "/");
   }, []);
 
 
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
+
   const [sort, setSort] = useState<"created" | "updated" | "comments" | "stars">("created");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
+
+  const resetPagination = useCallback(() => {
+    setCurrentPage(1);
+    setCursorHistory([null]);
+  }, []);
 
   // Sort/order are client-side only.
   const [applied, setApplied] = useState<FilterDraft>(draft);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([null]);
-
   const cursor = cursorHistory[currentPage - 1] ?? null;
 
   const searchQuery = useQuery<SearchResponse>({
-    queryKey: ["search", applied, currentPage, cursor, sessionQuery.data?.login ?? null],
+    queryKey: ["search", applied, currentPage, cursor, sort, order, sessionQuery.data?.login ?? null],
     queryFn: async () => {
       const perPage = isGuest ? 10 : 20;
       const r = await fetch("/api/github/search", {
@@ -157,6 +165,8 @@ function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...applied,
+          sort,
+          order,
           type: applied.contributionType,
           activeMaintainer: applied.activeMaintainer,
           pairingRequested: applied.pairingRequested,
@@ -185,6 +195,7 @@ function HomeContent() {
   useEffect(() => {
     const rl = searchQuery.data?.rate_limit;
     if (rl && rl.limit) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       queryClient.setQueryData(["rateLimit"], (old: any) => ({
         ...old,
         activeSearchLimit: rl,
@@ -192,45 +203,75 @@ function HomeContent() {
     }
   }, [searchQuery.data?.rate_limit, queryClient]);
 
-  useEffect(() => {
-    if (draft.text === applied.text) return;
-    const timer = setTimeout(() => {
-      setApplied(p => ({ ...p, text: draft.text }));
+  // Automatic search is disabled as per user request.
+  // Search only triggers on handleSubmit (Search button) or Mission selection.
+
+  const applyMission = useCallback((missionFilters: Partial<FilterDraft>) => {
+    setDraft(prev => {
+      const next = {
+        ...prev,
+        ...missionFilters,
+        text: prev.text,
+        languages: prev.languages,
+      };
+      setApplied(next);
       setCurrentPage(1);
       setCursorHistory([null]);
-      syncUrlFromDraft({ ...draft }, hideLinkedPRs);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [draft.text, applied.text, draft, hideLinkedPRs, syncUrlFromDraft]);
-
-  const resetPagination = () => {
-    setCurrentPage(1);
-    setCursorHistory([null]);
-  };
+      syncUrlFromDraft(next, hideLinkedPRs);
+      return next;
+    });
+  }, [hideLinkedPRs, syncUrlFromDraft, setDraft]);
 
   const applyFiltersImmediate = useCallback((next: FilterDraft) => {
+    // Toggles now only update draft. User must click Search.
     setDraft(next);
-    setApplied(next);
-    resetPagination();
-    syncUrlFromDraft(next, hideLinkedPRs);
-  }, [hideLinkedPRs, syncUrlFromDraft]);
+  }, [setDraft]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setApplied({ ...draft });
+    
+    // Create a sanitized copy of the draft
+    const sanitized = { ...draft };
+    
+    // Clamp and swap popularity stars (limit 100,000)
+    const minStars = Math.max(0, Math.min(draft.minStars, 100000));
+    const maxStars = draft.maxStars === null ? null : Math.max(0, Math.min(draft.maxStars, 100000));
+    if (maxStars !== null && minStars > maxStars) {
+      sanitized.minStars = maxStars;
+      sanitized.maxStars = minStars;
+    } else {
+      sanitized.minStars = minStars;
+      sanitized.maxStars = maxStars;
+    }
+    
+    // Clamp and swap activity forks (limit 50,000)
+    const minForks = Math.max(0, Math.min(draft.minForks, 50000));
+    const maxForks = draft.maxForks === null ? null : Math.max(0, Math.min(draft.maxForks, 50000));
+    if (maxForks !== null && minForks > maxForks) {
+      sanitized.minForks = maxForks;
+      sanitized.maxForks = minForks;
+    } else {
+      sanitized.minForks = minForks;
+      sanitized.maxForks = maxForks;
+    }
+    
+    setDraft(sanitized);
+    setApplied(sanitized);
     resetPagination();
-    syncUrlFromDraft(draft, hideLinkedPRs);
+    syncUrlFromDraft(sanitized, hideLinkedPRs);
     setFilterOpen(false);
   };
 
   const handleResetFilters = useCallback(() => {
-    const resetDraft: FilterDraft = { ...EMPTY_FILTERS };
-    setDraft(resetDraft);
-    setApplied(resetDraft);
+    const next = { ...DEFAULT, text: "" };
+    setDraft(next);
+    setApplied(next);
     setHideLinkedPRs(false);
-    resetPagination();
-    syncUrlFromDraft(resetDraft, false);
-  }, [syncUrlFromDraft]);
+    setCurrentPage(1);
+    setCursorHistory([null]);
+    // Force a clean URL
+    window.history.replaceState(null, "", "/");
+  }, [setDraft, setApplied, setHideLinkedPRs, setCurrentPage, setCursorHistory]);
 
   const handlePageChange = (page: number) => {
     if (page > currentPage && searchQuery.data?.endCursor) {
@@ -267,7 +308,6 @@ function HomeContent() {
     ? Math.min(50, Math.ceil(searchQuery.data.total_count / perPage))
     : 1;
 
-  const rl = searchQuery.data?.rate_limit;
   const activeFilterCount = countActiveFilters(draft, hideLinkedPRs);
 
   return (
@@ -326,26 +366,32 @@ function HomeContent() {
                 {
                   id: "galaxy-brain", emoji: "🧠", label: "Galaxy Brain", badge: "15 pts",
                   desc: "Unanswered Q&A discussions — earn Galaxy Brain badge",
-                  onClick: () => {
-                    const m: FilterDraft = { ...DEFAULT, contributionType: "discussion", activeMaintainer: true, labels: [] };
-                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
-                  },
+                  onClick: () => applyMission({ 
+                    contributionType: "discussion", 
+                    activeMaintainer: true, 
+                    labels: [],
+                    issueAgeDays: 365 
+                  }),
                 },
                 {
                   id: "pair-extraordinaire", emoji: "🤝", label: "Pair Extraordinaire", badge: "New",
                   desc: "Issues asking for co-authors — earn Pair Extraordinaire badge",
-                  onClick: () => {
-                    const m: FilterDraft = { ...DEFAULT, pairingRequested: true, activeMaintainer: true, zeroComments: false };
-                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
-                  },
+                  onClick: () => applyMission({ 
+                    pairingRequested: true, 
+                    activeMaintainer: true, 
+                    zeroComments: false,
+                    issueAgeDays: 365 
+                  }),
                 },
                 {
                   id: "pull-shark", emoji: "🦈", label: "Pull Shark", badge: "Fast",
                   desc: "Zero-comment, fresh issues — earn Pull Shark badge",
-                  onClick: () => {
-                    const m: FilterDraft = { ...DEFAULT, zeroComments: true, activeMaintainer: true, noAssignee: true };
-                    setDraft(m); setApplied(m); resetPagination(); syncUrlFromDraft(m, hideLinkedPRs);
-                  },
+                  onClick: () => applyMission({ 
+                    zeroComments: true, 
+                    activeMaintainer: true, 
+                    noAssignee: true,
+                    issueAgeDays: 365 
+                  }),
                 },
               ].map(mission => (
                 <button
@@ -366,14 +412,20 @@ function HomeContent() {
           </div>
         </div>
 
-        <div
-          className={`gt-filter-overlay${filterOpen ? " open" : ""}`}
-          onClick={() => setFilterOpen(false)}
-          aria-hidden="true"
-        />
+        {/* Backdrop for mobile drawer dismissal */}
+        {filterOpen && (
+          <div 
+            onClick={() => setFilterOpen(false)}
+            style={{
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+              zIndex: 1000, cursor: "pointer"
+            }}
+          />
+        )}
 
         <div className="gt-layout-grid">
-          <aside className={`gt-filter-aside${filterOpen ? " open" : ""}`}>
+          <aside className={`gt-filter-aside${filterOpen ? " open" : ""}`} style={{ zIndex: 1001 }}>
             <div
               className="gt-filter-inner"
               style={{
@@ -405,7 +457,7 @@ function HomeContent() {
                 hideLinkedPRs={hideLinkedPRs}
                 setHideLinkedPRs={(v) => {
                   setHideLinkedPRs(v);
-                  syncUrlFromDraft(draft, v);
+                  syncUrlFromDraft(applied, v);
                 }}
                 isGuest={isGuest}
                 onSubmit={handleSubmit}
@@ -479,21 +531,26 @@ function HomeContent() {
                         key={val}
                         type="button"
                         title={desc}
+                        data-testid={`tab-${val}`}
                         onClick={() => {
                           const updated = {
                             ...draft,
                             contributionType: val,
+                            // PRESERVE ALL draft state across tab switches, except clear labels for discussions
                             labels: val === "discussion" ? [] : draft.labels,
+                            languages: draft.languages,
+                            text: draft.text,
+                            activeMaintainer: draft.activeMaintainer,
                             noAssignee: val === "discussion" ? false : draft.noAssignee,
-                            activeMaintainer: val === "discussion" ? false : draft.activeMaintainer,
                             pairingRequested: val === "discussion" ? false : draft.pairingRequested,
                           };
-                          const nextHideLinkedPRs = val === "discussion" ? false : hideLinkedPRs;
+                          // Auto-search on tab switch (same pattern as applyMission).
+                          // Cache hit will return instantly; otherwise fires a new query.
                           setDraft(updated);
                           setApplied(updated);
-                          setHideLinkedPRs(nextHideLinkedPRs);
                           resetPagination();
-                          syncUrlFromDraft(updated, nextHideLinkedPRs);
+                          syncUrlFromDraft(updated, hideLinkedPRs);
+                          if (val === "discussion") setHideLinkedPRs(false);
                         }}
                         style={{
                           flex: 1, padding: "7px 0", borderRadius: 9, fontSize: 13, fontWeight: isActive ? 700 : 500,
@@ -552,7 +609,7 @@ function HomeContent() {
                   ] as const).map(({ val, label }) => (
                     <button
                       key={val}
-                      onClick={() => { setSort(val); }}
+                      onClick={() => { setSort(val); resetPagination(); }}
                       style={{
                         padding: "5px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
                         border: "1px solid",
@@ -696,12 +753,14 @@ function HomeContent() {
                 ) : null}
               </div>
 
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-                maxAllowedPage={isGuest ? totalPages : Math.max(cursorHistory.length, currentPage + (searchQuery.data?.endCursor ? 1 : 0))}
-              />
+              {mounted && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  maxAllowedPage={isGuest ? totalPages : Math.max(cursorHistory.length, currentPage + (searchQuery.data?.endCursor ? 1 : 0))}
+                />
+              )}
             </section>
           </div>
       </main>
@@ -709,10 +768,65 @@ function HomeContent() {
   );
 }
 
+function HomeClientContent() {
+  const searchParams = useSearchParams();
+  const [draft, setDraft] = useState<FilterDraft>(() => {
+    if (!searchParams) return DEFAULT;
+    const fromUrl: FilterDraft = { ...DEFAULT };
+    if (searchParams.has("text")) fromUrl.text = searchParams.get("text")!;
+    if (searchParams.has("languages")) fromUrl.languages = searchParams.get("languages")!.split(",");
+    if (searchParams.has("labels")) fromUrl.labels = searchParams.get("labels")!.split(",");
+    if (searchParams.has("zeroComments")) fromUrl.zeroComments = searchParams.get("zeroComments") === "true";
+    if (searchParams.has("noAssignee")) fromUrl.noAssignee = searchParams.get("noAssignee") === "true";
+    if (searchParams.has("discussions")) fromUrl.contributionType = "discussion";
+    if (searchParams.has("age")) {
+      const parsedAge = Number(searchParams.get("age"));
+      fromUrl.issueAgeDays = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : DEFAULT.issueAgeDays;
+    }
+    if (searchParams.has("minStars")) {
+      const parsedMinStars = Number(searchParams.get("minStars"));
+      fromUrl.minStars = Number.isFinite(parsedMinStars) && parsedMinStars >= 0 ? parsedMinStars : 0;
+    }
+    if (searchParams.has("maxStars")) {
+      const val = searchParams.get("maxStars");
+      const parsedMaxStars = val === null || val === "" ? null : Number(val);
+      fromUrl.maxStars = parsedMaxStars !== null && Number.isFinite(parsedMaxStars) && parsedMaxStars >= 0 ? parsedMaxStars : null;
+    }
+    if (searchParams.has("minForks")) {
+      const parsedMinForks = Number(searchParams.get("minForks"));
+      fromUrl.minForks = Number.isFinite(parsedMinForks) && parsedMinForks >= 0 ? parsedMinForks : 0;
+    }
+    if (searchParams.has("maxForks")) {
+      const val = searchParams.get("maxForks");
+      const parsedMaxForks = val === null || val === "" ? null : Number(val);
+      fromUrl.maxForks = parsedMaxForks !== null && Number.isFinite(parsedMaxForks) && parsedMaxForks >= 0 ? parsedMaxForks : null;
+    }
+    if (searchParams.has("pushed")) {
+      const parsedPushed = Number(searchParams.get("pushed"));
+      fromUrl.repoPushedDays = Number.isFinite(parsedPushed) && parsedPushed > 0 ? parsedPushed : DEFAULT.repoPushedDays;
+    }
+    if (searchParams.has("org")) fromUrl.org = searchParams.get("org")!;
+    if (searchParams.has("onlyOrgs")) fromUrl.onlyOrgs = searchParams.get("onlyOrgs") === "true";
+    if (searchParams.has("active")) fromUrl.activeMaintainer = searchParams.get("active") === "true";
+    if (searchParams.has("pairing")) fromUrl.pairingRequested = searchParams.get("pairing") === "true";
+    return fromUrl;
+  });
+  const [hideLinkedPRs, setHideLinkedPRs] = useState(() => searchParams?.get("hideLinkedPRs") === "true");
+
+  return (
+    <HomeContentInner 
+      draft={draft} 
+      setDraft={setDraft} 
+      hideLinkedPRs={hideLinkedPRs} 
+      setHideLinkedPRs={setHideLinkedPRs} 
+    />
+  );
+}
+
 export function HomeClient() {
   return (
     <Suspense fallback={<div style={{ minHeight: "60vh", background: "var(--gt-bg)" }} />}>
-      <HomeContent />
+      <HomeClientContent />
     </Suspense>
   );
 }

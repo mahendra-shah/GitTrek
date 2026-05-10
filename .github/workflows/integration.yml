@@ -27,3 +27,7 @@ jobs:
         env:
           # Use your custom secret if provided, otherwise fallback to the default runner token
           GITHUB_TOKEN: ${{ secrets.GH_SECRET_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_CLIENT_ID: ${{ secrets.GH_CLIENT_ID || 'dummy-client-id' }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GH_CLIENT_SECRET || 'dummy-client-secret' }}
+          GITHUB_REDIRECT_URI: ${{ secrets.GH_REDIRECT_URI || 'http://localhost:5173/api/auth/callback' }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET || 'ci-test-secret-at-least-32-chars-long-123' }}

@@ -12,6 +12,10 @@ export function useCountUp(target: number, durationMs = 900) {
   const started = useRef(false);
 
   useEffect(() => {
+    started.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setValue(0);
+
     const el = ref.current;
     if (!el) return;
 

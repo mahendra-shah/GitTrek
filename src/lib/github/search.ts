@@ -68,6 +68,7 @@ function dateDaysAgo(days: number): string {
   return `${year}-${month}-${day}`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function pushOrGroup(
   tokens: string[],
   parts: string[],
@@ -98,68 +99,120 @@ function pushOrGroup(
 
 export function buildIssueSearchQuery(filters: IssueSearchFilters): QueryBuildResult {
   const isDiscussion = filters.type === "discussion";
-  const tokens: string[] = isDiscussion
-    ? ["is:open"]
-    : ["is:issue", "is:open", "archived:false"];
   const warnings: string[] = [];
   const state = { orCount: 0, warnings };
 
+  // Required type tokens (always kept, never dropped)
+  const requiredTokens: string[] = isDiscussion
+    ? ["is:open"]
+    : ["is:issue", "is:open", "archived:false"];
+
+  // Optional tokens in priority order (highest first — these are dropped last if query is too long)
+  const optionalTokens: string[] = [];
+
   // org: works for both issues and discussions
   if (filters.org) {
-    tokens.push(`org:${filters.org}`);
+    optionalTokens.push(`org:${filters.org}`);
   }
+
+  // NOTE: stars: and forks: are NOT added to GitHub issue search query strings.
+  // Empirical testing shows these qualifiers return near-zero results (3–27 total)
+  // when combined with other issue search qualifiers (no:assignee, created:, label:).
+  // GitHub designed stars:/forks: for repository search, not issue search.
+  // Stars/forks filtering is applied correctly by filterByRepoQuality AFTER fetch.
 
   // language: works for both
   const languages = normalizeList(filters.languages);
   if (languages.length === 1) {
-    tokens.push(`language:${languages[0]}`);
+    optionalTokens.push(`language:${languages[0]}`);
   } else if (languages.length > 1) {
     const parts = languages.map((lang) => `language:${lang}`);
-    pushOrGroup(tokens, parts, "language", state);
+    // Build the OR group inline so we can measure it as a single token
+    const needed = parts.length - 1;
+    if (state.orCount + needed > MAX_BOOLEAN_OPS) {
+      const allowed = Math.max(1, MAX_BOOLEAN_OPS - state.orCount + 1);
+      const truncated = parts.slice(0, allowed);
+      state.warnings.push(`Limited language filters to ${truncated.length}.`);
+      optionalTokens.push(truncated.length === 1 ? truncated[0] : `(${truncated.join(" OR ")})`);
+      state.orCount += truncated.length - 1;
+    } else {
+      optionalTokens.push(`(${parts.join(" OR ")})`);
+      state.orCount += needed;
+    }
   }
 
   // Free-text search works for both
   const text = filters.text?.trim();
   if (text) {
-    tokens.push(text);
+    optionalTokens.push(text);
   }
+
+  // NOTE: sort is NOT added to the query string.
+  // REST API uses ?sort=&order= URL params (done in searchREST).
+  // GraphQL search API does not support sort: in the query string — it ignores or breaks it.
 
   // Zero replies/comments — supported on both issue and discussion GitHub search
   if (filters.zeroComments) {
-    tokens.push("comments:0");
+    optionalTokens.push("comments:0");
   }
 
   // Discussion search rejects these qualifiers — keep them issue-only.
   if (!isDiscussion) {
     if (filters.noAssignee) {
-      tokens.push("no:assignee");
+      optionalTokens.push("no:assignee");
     }
 
     if (filters.issueAgeDays) {
-      tokens.push(`created:>=${dateDaysAgo(filters.issueAgeDays)}`);
+      optionalTokens.push(`created:>=${dateDaysAgo(filters.issueAgeDays)}`);
     }
 
-    if (filters.activeMaintainer) {
-      tokens.push(`pushed:>=${dateDaysAgo(30)}`);
-    }
+    // NOTE: pushed: qualifier is NOT added to the GitHub query string.
+    // Empirical testing shows pushed: combined with other qualifiers (created:, no:assignee, label:)
+    // returns near-zero results — GitHub's issue search barely supports it.
+    // Stale-repo filtering is done correctly by filterByRepoQuality via repoPushedDays.
 
     if (filters.pairingRequested) {
-      tokens.push(`("pair with me" OR "pairing" OR "pair") in:comments`);
+      optionalTokens.push(`("pair with me" OR "pairing" OR "pair") in:comments`);
     }
 
     const labels = normalizeList(filters.labels);
     if (labels.length === 1) {
-      tokens.push(`label:"${labels[0]}"`);
+      optionalTokens.push(`label:"${labels[0]}"`);
     } else if (labels.length > 1) {
       const parts = labels.map((label) => `label:"${label}"`);
-      pushOrGroup(tokens, parts, "label", state);
+      const needed = parts.length - 1;
+      if (state.orCount + needed > MAX_BOOLEAN_OPS) {
+        const allowed = Math.max(1, MAX_BOOLEAN_OPS - state.orCount + 1);
+        const truncated = parts.slice(0, allowed);
+        state.warnings.push(`Limited label filters to ${truncated.length}.`);
+        optionalTokens.push(truncated.length === 1 ? truncated[0] : `(${truncated.join(" OR ")})`);
+        state.orCount += truncated.length - 1;
+      } else {
+        optionalTokens.push(parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`);
+        state.orCount += needed;
+      }
     }
   }
 
-  let query = tokens.join(" ");
-  if (query.length > MAX_QUERY_LEN) {
-    warnings.push("Search query trimmed to fit API limits.");
-    query = query.slice(0, MAX_QUERY_LEN);
+  // Build query by fitting tokens within MAX_QUERY_LEN.
+  // Required tokens are always included; optional tokens are dropped from the END
+  // (lowest priority) if the query would exceed the limit.
+  // This prevents hard-slicing mid-qualifier which silently produces malformed queries.
+  const baseQuery = requiredTokens.join(" ");
+  let query = baseQuery;
+  const droppedLabels: string[] = [];
+
+  for (const token of optionalTokens) {
+    const candidate = query ? `${query} ${token}` : token;
+    if (candidate.length <= MAX_QUERY_LEN) {
+      query = candidate;
+    } else {
+      droppedLabels.push(token);
+    }
+  }
+
+  if (droppedLabels.length > 0) {
+    warnings.push(`Some filters were dropped to fit the GitHub query limit: ${droppedLabels.length} qualifier(s) removed.`);
   }
 
   return { query, warnings };

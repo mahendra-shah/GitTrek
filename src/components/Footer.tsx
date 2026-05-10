@@ -38,7 +38,6 @@ export function Footer() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <picture>
                   <source srcSet="/logo-light.svg" media="(prefers-color-scheme: dark)" />
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/logo-dark.svg" alt="" role="presentation"
                     style={{ height: 36, width: 36, borderRadius: 9 }} />
                 </picture>

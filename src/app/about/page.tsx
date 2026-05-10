@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { CANONICAL_DESCRIPTION, SITE_AI_CONTEXT, SITE_CAREER_HOOK } from "@/lib/site-copy";
+import Link from "next/link";
 
 const SITE = "https://gittrek.vercel.app";
 const OG_HOME = `${SITE}/opengraph-image`;
@@ -305,9 +306,9 @@ export default function AboutPage() {
             </h3>
             <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
               Yes. GitTrek has a public badge tracker — go to{" "}
-              <a href="/badges" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+              <Link href="/badges" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
                 gittrek.vercel.app/badges
-              </a>{" "}
+              </Link>{" "}
               and enter any GitHub username. No sign-in required to view another user&apos;s
               public badge progress. You can share your badge profile URL with others too.
             </p>
@@ -332,9 +333,9 @@ export default function AboutPage() {
             </h3>
             <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
               GitTrek is built for exactly this. Use the{" "}
-              <a href="/?labels=good+first+issue&noAssignee=true" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+              <Link href="/?labels=good+first+issue&noAssignee=true" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
                 Pull Shark Quick Mission
-              </a>{" "}
+              </Link>{" "}
               to instantly filter for zero-comment, unassigned issues with no competing PRs. You
               can also combine &quot;No assignee&quot; + &quot;Active maintainer&quot; filters to find fresh issues
               in repos where your PR is likely to get reviewed quickly.
@@ -347,9 +348,9 @@ export default function AboutPage() {
             </h3>
             <p style={{ color: "var(--gt-text-muted)", margin: 0 }}>
               Yes. Read the{" "}
-              <a href="/guide" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
+              <Link href="/guide" style={{ color: "var(--gt-primary)", textDecoration: "underline" }}>
                 Beginner&apos;s Guide
-              </a>{" "}
+              </Link>{" "}
               for prerequisites, how OSS communities work, first PR steps, communication etiquette, and
               common mistakes to avoid.
             </p>
