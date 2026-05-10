@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildIssueSearchQuery, filterByRepoQuality } from "../../src/lib/github/search";
-import { DEFAULT, EMPTY_FILTERS, countActiveFilters } from "../../src/components/HomeClient";
-import type { FilterDraft } from "../../src/components/FilterPanel";
+import { DEFAULT, EMPTY_FILTERS, countActiveFilters } from "../../src/features/search/types";
+import type { FilterDraft } from "../../src/features/search/types";
 
 describe("GitTrek Pre-Production Deep Regression & Stability Tests", () => {
   const isDeepMode = process.env.DEEP_TEST === "true";

@@ -19,8 +19,8 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
 import { buildIssueSearchQuery, filterByRepoQuality } from "../../src/lib/github/search";
-import { DEFAULT } from "../../src/components/HomeClient";
-import type { FilterDraft } from "../../src/components/FilterPanel";
+import { DEFAULT } from "../../src/features/search/types";
+import type { FilterDraft } from "../../src/features/search/types";
 
 // ─── Replicate the server-side Zod schema locally so we can validate what
 //     the UI actually sends against what the server actually accepts.

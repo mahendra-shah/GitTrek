@@ -2,55 +2,16 @@
 
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
-import { TagInput } from "./TagInput";
+import { TagInput } from "../../../components/TagInput";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { useState, useEffect, useId } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-export type FilterDraft = {
-  text: string;
-  languages: string[];
-  labels: string[];
-  zeroComments: boolean;
-  issueAgeDays: number;
-  minStars: number;
-  maxStars: number | null;
-  minForks: number;
-  maxForks: number | null;
-  repoPushedDays: number;
-  noAssignee: boolean;
-  hasContributing: boolean;
-  org?: string;
-  onlyOrgs?: boolean;
-  contributionType: "issue" | "discussion";
-  activeMaintainer: boolean;
-  pairingRequested: boolean;
-};
+import { FilterDraft, DEFAULT, COMMON_LABELS, COMMON_LANGUAGES, STARS_MAX, FORKS_MAX } from "../types";
+import { useSearch } from "../context/SearchContext";
+import { useUrlSync } from "../hooks/useUrlSync";
 
-type FilterPanelProps = {
-  draft: FilterDraft;
-  setDraft: React.Dispatch<React.SetStateAction<FilterDraft>>;
-  /** Apply boolean toggles immediately (syncs URL + search without scrolling to submit) */
-  onApplyImmediate: (next: FilterDraft) => void;
-  onReset: () => void;
-  hideLinkedPRs: boolean;
-  setHideLinkedPRs: (val: boolean) => void;
-  isGuest: boolean;
-  onSubmit: (e: React.FormEvent) => void;
-  isSearching: boolean;
-};
-
-const COMMON_LABELS = [
-  "good first issue","help wanted","bug","enhancement","documentation",
-  "beginner friendly","easy","first-timers-only","up-for-grabs","hacktoberfest","feature request",
-];
-const COMMON_LANGUAGES = [
-  "JavaScript","TypeScript","Python","Go","Rust","Java","C++","C",
-  "Ruby","PHP","Kotlin","Swift","C#","Shell","HTML","CSS","Vue","Dart",
-  "Objective-C","Scala","Haskell","Lua","Perl","Elixir","Clojure"
-];
-
-const STARS_MAX = 100_000;
-const FORKS_MAX = 50_000;
+// We extract constants to types where applicable, but we'll leave UI components here
 
 const labelSt: React.CSSProperties = {
   display: "block", fontSize: 11, fontWeight: 700,
@@ -186,12 +147,10 @@ function RangeBlock({ label, tooltip, minVal, maxVal, maxLimit, onMinChange, onM
   const [localMax, setLocalMax] = useState(maxVal === null ? "" : String(maxVal));
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMin(String(minVal));
   }, [minVal]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMax(maxVal === null ? "" : String(maxVal));
   }, [maxVal]);
 
@@ -305,20 +264,85 @@ function FilterRow({ label, sublabel, tooltip, checked, onChange, disabled }: {
   );
 }
 
-export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLinkedPRs, setHideLinkedPRs, isGuest, onSubmit, isSearching }: FilterPanelProps) {
-  const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
-  const apply = (k: Partial<FilterDraft>) => {
-    setDraft(prev => {
-      const next = { ...prev, ...k };
-      onApplyImmediate(next);
-      return next;
-    });
-  };
+export function FilterPanel({ onClose }: { onClose?: () => void }) {
+  const {
+    draft, setDraft,
+    setApplied,
+    setCurrentPage,
+    setCursorHistory,
+    hideLinkedPRs, setHideLinkedPRs,
+    isSearching
+  } = useSearch();
+
+  const { syncUrlFromDraft } = useUrlSync();
+
+  const sessionQuery = useQuery({
+    queryKey: ["session"],
+    queryFn: async () => {
+      const r = await fetch("/api/auth/me");
+      if (r.status === 401) return null;
+      if (!r.ok) throw new Error("session_error");
+      return r.json();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
   const effectiveSearching = mounted && isSearching;
+  const isGuest = mounted && !sessionQuery.isLoading && sessionQuery.data === null;
+
+  const set = (k: Partial<FilterDraft>) => setDraft(p => ({ ...p, ...k }));
+
+  // Helper used when toggles are changed to keep draft updated
+  // (We no longer auto-apply toggles; user must hit Search)
+  const apply = (k: Partial<FilterDraft>) => {
+    setDraft(prev => ({ ...prev, ...k }));
+  };
+
+  const handleResetFilters = () => {
+    const next = { ...DEFAULT, text: "" };
+    setDraft(next);
+    setApplied(next);
+    setHideLinkedPRs(false);
+    setCurrentPage(1);
+    setCursorHistory([null]);
+    window.history.replaceState(null, "", "/");
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const sanitized = { ...draft };
+    
+    const minStars = Math.max(0, Math.min(draft.minStars, 100000));
+    const maxStars = draft.maxStars === null ? null : Math.max(0, Math.min(draft.maxStars, 100000));
+    if (maxStars !== null && minStars > maxStars) {
+      sanitized.minStars = maxStars;
+      sanitized.maxStars = minStars;
+    } else {
+      sanitized.minStars = minStars;
+      sanitized.maxStars = maxStars;
+    }
+    
+    const minForks = Math.max(0, Math.min(draft.minForks, 50000));
+    const maxForks = draft.maxForks === null ? null : Math.max(0, Math.min(draft.maxForks, 50000));
+    if (maxForks !== null && minForks > maxForks) {
+      sanitized.minForks = maxForks;
+      sanitized.maxForks = minForks;
+    } else {
+      sanitized.minForks = minForks;
+      sanitized.maxForks = maxForks;
+    }
+    
+    setDraft(sanitized);
+    setApplied(sanitized);
+    setCurrentPage(1);
+    setCursorHistory([null]);
+    syncUrlFromDraft(sanitized, hideLinkedPRs);
+    if (onClose) onClose();
+  };
 
   // Stable, unique IDs for label/input associations (React 18+)
   const ageId = useId();
@@ -337,12 +361,12 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
       : "Search issues";
 
   return (
-    <form className="gt-filter-form" onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0 }}>
+    <form className="gt-filter-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <span style={{ ...labelSt, marginBottom: 0 }}>Filters</span>
         <button
           type="button"
-          onClick={onReset}
+          onClick={handleResetFilters}
           style={{
             background: "none",
             border: "none",
@@ -460,7 +484,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
         </div>
       )}
 
-      {/* Advanced Filters — proper aria-expanded/aria-controls disclosure pattern */}
+      {/* Advanced Filters */}
       <div style={{ borderTop: "1px solid var(--gt-border)", paddingTop: 14 }}>
         <button
           type="button"
@@ -500,7 +524,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
               onMaxChange={v => set({ maxForks: v })}
             />
 
-            {/* Last Code Push — proper label association */}
+            {/* Last Code Push */}
             <div>
               <FieldLabel htmlFor={pushedId}>Last Code Push<Tip text="When the repo last had code committed to it. Ensures you're not contributing to a dead project." /></FieldLabel>
               <DarkSelect id={pushedId} value={draft.repoPushedDays} onChange={v => set({ repoPushedDays: parseInt(v) })}>
@@ -511,7 +535,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
               </DarkSelect>
             </div>
 
-            {/* Org filter — aria-label on input since no visible label element */}
+            {/* Org filter */}
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gt-text)" }}>
                 Search in Org
@@ -552,7 +576,7 @@ export function FilterPanel({ draft, setDraft, onApplyImmediate, onReset, hideLi
 
       </div>
 
-      {/* Submit row — lives outside the scroll div so it never scrolls away */}
+      {/* Submit row */}
       <div style={{
         flexShrink: 0,
         paddingTop: 12,

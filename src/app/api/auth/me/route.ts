@@ -34,5 +34,9 @@ export async function GET() {
     name: data.name,
     avatarUrl: data.avatar_url,
     htmlUrl: data.html_url,
+  }, {
+    headers: {
+      "Cache-Control": "no-store, max-age=0",
+    }
   });
 }

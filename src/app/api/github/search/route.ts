@@ -316,6 +316,12 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
 
   const result = await response.json();
   if (result.errors) {
+    const isRateLimit = result.errors.some(
+      (e: any) => e.type === "RATE_LIMITED" || e.message?.toLowerCase().includes("rate limit")
+    );
+    if (isRateLimit) {
+      throw new Error("rate limit");
+    }
     throw new Error(result.errors[0]?.message || "github_graphql_error");
   }
 
@@ -658,7 +664,10 @@ export async function POST(request: Request) {
       }
     } catch (error: any) {
       if (error.message === "rate limit") {
-        return NextResponse.json({ error: "Rate limit exceeded. Please sign in with GitHub for unlimited searches." }, { status: 429 });
+        const errorMsg = userToken 
+          ? "GitHub Search API rate limit exceeded (max 30 searches per minute). Please try again in a minute."
+          : "Rate limit exceeded. Please sign in with GitHub for unlimited searches.";
+        return NextResponse.json({ error: errorMsg }, { status: 429 });
       }
       if (error.message === "unauthorized") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
