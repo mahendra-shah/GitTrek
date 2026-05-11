@@ -515,12 +515,11 @@ export async function POST(request: Request) {
     let cacheKey: string | null = null;
 
     if (isFirstPage) {
-      if (isDefault) {
-        // Global Fast-Path: Force the cache key to ignore viewerLogin.
-        // The fetch logic below will automatically use a bot token.
+      if (!userToken && isDefault) {
+        // Global Fast-Path (guests only): ignore viewerLogin and use the bot pool.
         cacheKey = makeCacheKey(filters, { global: true });
       } else {
-        // Personalized Cache: Include viewerLogin in the cache key so it's private to them.
+        // Personalized Cache: include viewerLogin to avoid cross-user contamination.
         cacheKey = makeCacheKey(filters, { global: false });
       }
     }
@@ -546,10 +545,8 @@ export async function POST(request: Request) {
         // Cap at 100 (GitHub max per page).
         const fetchSize = Math.min(Math.ceil(filters.perPage * 4), 100);
 
-        // Guests OR Global Fast-Path: try pool tokens in order; exhaust on 429 and continue.
-        // Auth users (Personalized Cache): use their personal token.
-        const isGlobalFastPath = isFirstPage && isDefault;
-        const tokensToTry: string[] = (userToken && !isGlobalFastPath)
+        // Auth users always try their personal token first; guests use the bot pool.
+        const tokensToTry: string[] = userToken
           ? [userToken, ...botTokenPool.getAvailableTokens()]
           : botTokenPool.getAvailableTokens();
 
@@ -574,8 +571,10 @@ export async function POST(request: Request) {
             break; // success — stop trying
           } catch (err: any) {
             if (err.message === "rate limit") {
-              // Mark this specific token as exhausted and try the next one
-              if (!userToken) botTokenPool.exhaustToken(candidateToken, err.resetAt);
+              // Mark bot tokens as exhausted; never mark the user's token in the pool.
+              if (candidateToken !== userToken) {
+                botTokenPool.exhaustToken(candidateToken, err.resetAt);
+              }
               lastRateLimitError = err;
               continue;
             }
