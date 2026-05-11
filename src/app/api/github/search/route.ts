@@ -282,7 +282,7 @@ function determinePRStatus(issueNode: any) {
   return { status, openPrCount, draftPrCount, linkedBranches };
 }
 
-async function searchGraphQL(token: string, q: string, filters: Filters) {
+async function searchGraphQL(token: string, q: string, filters: Filters, isPersonalized: boolean) {
   const isDiscussion = filters.type === "discussion";
   const gqlQuery = isDiscussion ? GRAPHQL_DISCUSSION_QUERY : GRAPHQL_ISSUE_QUERY;
 
@@ -367,7 +367,7 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
       prStatus: isDiscussion
         ? { status: "safe" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 }
         : determinePRStatus(node),
-      viewer: buildViewerSummary(filters.viewerLogin, node, isDiscussion),
+      viewer: buildViewerSummary(isPersonalized ? filters.viewerLogin : undefined, node, isDiscussion),
     };
   });
 
@@ -515,12 +515,11 @@ export async function POST(request: Request) {
     let cacheKey: string | null = null;
 
     if (isFirstPage) {
-      if (isDefault) {
-        // Global Fast-Path: Force the cache key to ignore viewerLogin.
-        // The fetch logic below will automatically use a bot token.
+      if (!userToken && isDefault) {
+        // Global Fast-Path (guests only): ignore viewerLogin and use the bot pool.
         cacheKey = makeCacheKey(filters, { global: true });
       } else {
-        // Personalized Cache: Include viewerLogin in the cache key so it's private to them.
+        // Personalized Cache: include viewerLogin to avoid cross-user contamination.
         cacheKey = makeCacheKey(filters, { global: false });
       }
     }
@@ -546,11 +545,9 @@ export async function POST(request: Request) {
         // Cap at 100 (GitHub max per page).
         const fetchSize = Math.min(Math.ceil(filters.perPage * 4), 100);
 
-        // Guests OR Global Fast-Path: try pool tokens in order; exhaust on 429 and continue.
-        // Auth users (Personalized Cache): use their personal token.
-        const isGlobalFastPath = isFirstPage && isDefault;
-        const tokensToTry: string[] = (userToken && !isGlobalFastPath)
-          ? [userToken]
+        // Auth users always try their personal token first; guests use the bot pool.
+        const tokensToTry: string[] = userToken
+          ? [userToken, ...botTokenPool.getAvailableTokens()]
           : botTokenPool.getAvailableTokens();
 
         if (tokensToTry.length === 0) {
@@ -568,14 +565,16 @@ export async function POST(request: Request) {
               ...filters,
               cursor: filters.cursor || null,
               perPage: fetchSize,
-            });
+            }, candidateToken === userToken);
             activeToken = candidateToken;
             lastRateLimitError = null;
             break; // success — stop trying
           } catch (err: any) {
             if (err.message === "rate limit") {
-              // Mark this specific token as exhausted and try the next one
-              if (!userToken) botTokenPool.exhaustToken(candidateToken, err.resetAt);
+              // Mark bot tokens as exhausted; never mark the user's token in the pool.
+              if (candidateToken !== userToken) {
+                botTokenPool.exhaustToken(candidateToken, err.resetAt);
+              }
               lastRateLimitError = err;
               continue;
             }
@@ -585,10 +584,10 @@ export async function POST(request: Request) {
 
         // If every token was exhausted, surface the rate limit error
         if (lastRateLimitError) {
-          return NextResponse.json(
-            { error: "Rate limit exceeded. Sign in for unlimited searches." },
-            { status: 429 }
-          );
+          const message = userToken
+            ? "Rate limit exceeded. Both your account and our search pool are temporarily limited by GitHub. Please wait a moment."
+            : "Rate limit exceeded. Sign in for unlimited searches.";
+          return NextResponse.json({ error: message }, { status: 429 });
         }
 
         let fetchedItems = searchResult.items;
@@ -622,7 +621,7 @@ export async function POST(request: Request) {
             ...filters,
             cursor: currentCursor,
             perPage: fetchSize,
-          });
+          }, activeToken === userToken);
 
           let nextItems = nextResult.items;
 
