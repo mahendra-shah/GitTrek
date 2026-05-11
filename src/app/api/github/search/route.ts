@@ -282,7 +282,7 @@ function determinePRStatus(issueNode: any) {
   return { status, openPrCount, draftPrCount, linkedBranches };
 }
 
-async function searchGraphQL(token: string, q: string, filters: Filters) {
+async function searchGraphQL(token: string, q: string, filters: Filters, isPersonalized: boolean) {
   const isDiscussion = filters.type === "discussion";
   const gqlQuery = isDiscussion ? GRAPHQL_DISCUSSION_QUERY : GRAPHQL_ISSUE_QUERY;
 
@@ -367,7 +367,7 @@ async function searchGraphQL(token: string, q: string, filters: Filters) {
       prStatus: isDiscussion
         ? { status: "safe" as const, openPrCount: 0, draftPrCount: 0, linkedBranches: 0 }
         : determinePRStatus(node),
-      viewer: buildViewerSummary(filters.viewerLogin, node, isDiscussion),
+      viewer: buildViewerSummary(isPersonalized ? filters.viewerLogin : undefined, node, isDiscussion),
     };
   });
 
@@ -550,7 +550,7 @@ export async function POST(request: Request) {
         // Auth users (Personalized Cache): use their personal token.
         const isGlobalFastPath = isFirstPage && isDefault;
         const tokensToTry: string[] = (userToken && !isGlobalFastPath)
-          ? [userToken]
+          ? [userToken, ...botTokenPool.getAvailableTokens()]
           : botTokenPool.getAvailableTokens();
 
         if (tokensToTry.length === 0) {
@@ -568,7 +568,7 @@ export async function POST(request: Request) {
               ...filters,
               cursor: filters.cursor || null,
               perPage: fetchSize,
-            });
+            }, candidateToken === userToken);
             activeToken = candidateToken;
             lastRateLimitError = null;
             break; // success — stop trying
@@ -585,10 +585,10 @@ export async function POST(request: Request) {
 
         // If every token was exhausted, surface the rate limit error
         if (lastRateLimitError) {
-          return NextResponse.json(
-            { error: "Rate limit exceeded. Sign in for unlimited searches." },
-            { status: 429 }
-          );
+          const message = userToken
+            ? "Rate limit exceeded. Both your account and our search pool are temporarily limited by GitHub. Please wait a moment."
+            : "Rate limit exceeded. Sign in for unlimited searches.";
+          return NextResponse.json({ error: message }, { status: 429 });
         }
 
         let fetchedItems = searchResult.items;
@@ -622,7 +622,7 @@ export async function POST(request: Request) {
             ...filters,
             cursor: currentCursor,
             perPage: fetchSize,
-          });
+          }, activeToken === userToken);
 
           let nextItems = nextResult.items;
 
