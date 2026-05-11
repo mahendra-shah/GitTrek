@@ -284,7 +284,7 @@ export function FilterPanel({ onClose }: { onClose?: () => void }) {
       if (!r.ok) throw new Error("session_error");
       return r.json();
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0, // Always re-validate session with the server — never serve from cache
   });
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
