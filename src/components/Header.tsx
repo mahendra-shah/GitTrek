@@ -21,7 +21,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
       if (!r.ok) throw new Error("session_error");
       return r.json();
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0, // Always re-validate session with the server — never serve from cache
   });
 
   const user = sessionQuery.data;
@@ -49,7 +49,7 @@ export function Header({ children }: { children?: React.ReactNode }) {
         <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gt-header-text)" }}>{user.login}</span>
       </div>
       <button
-        onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); }}
+        onClick={() => { window.location.href = "/api/auth/logout"; }}
         style={{
           background: "none",
           border: "1px solid var(--gt-border)",
