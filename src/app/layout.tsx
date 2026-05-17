@@ -120,6 +120,7 @@ export default function RootLayout({
       className={`${spaceGrotesk.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <head>
+        <meta name="google-site-verification" content="UsFU4pMFOO7PxsFZxlG1tiQTrix-YSckr7yhcRwzvEM" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
